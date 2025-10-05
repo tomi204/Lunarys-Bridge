@@ -198,7 +198,9 @@ export default function Home() {
             </div>
 
             <div className="p-8 rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105">
-              <div className="text-5xl font-bold text-cyan-400 mb-2">&lt;1s</div>
+              <div className="text-5xl font-bold text-cyan-400 mb-2">
+                &lt;1s
+              </div>
               <div className="text-gray-400 text-lg">Settlement Time</div>
             </div>
           </div>
@@ -262,7 +264,9 @@ export default function Home() {
               </h3>
               <p className="text-gray-400 leading-relaxed text-lg">
                 Powered by{" "}
-                <span className="text-cyan-400">Raydium&apos;s deep liquidity</span>{" "}
+                <span className="text-cyan-400">
+                  Raydium&apos;s deep liquidity
+                </span>{" "}
                 and{" "}
                 <span className="text-cyan-400">
                   Triton&apos;s RPC infrastructure
@@ -323,8 +327,9 @@ export default function Home() {
                       Connect Your Wallet
                     </h3>
                     <p className="text-gray-400 text-lg leading-relaxed">
-                      Connect your Solana wallet to get started. Fully compatible
-                      with Phantom, Solflare, and all major Solana wallets.
+                      Connect your Solana wallet to get started. Fully
+                      compatible with Phantom, Solflare, and all major Solana
+                      wallets.
                     </p>
                   </div>
                 </div>
@@ -395,18 +400,23 @@ export default function Home() {
               </span>
             </h2>
             <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-              Leveraging Solana&apos;s high-speed, low-cost infrastructure for seamless cross-chain bridging
+              Leveraging Solana&apos;s high-speed, low-cost infrastructure for
+              seamless cross-chain bridging
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-8 rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/10 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105 hover:shadow-[0_0_40px_rgba(0,255,255,0.2)] text-center">
-              <div className="text-5xl font-bold text-cyan-400 mb-3">65,000+</div>
+              <div className="text-5xl font-bold text-cyan-400 mb-3">
+                65,000+
+              </div>
               <div className="text-gray-400 text-lg">TPS Capacity</div>
             </div>
 
             <div className="p-8 rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/10 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105 hover:shadow-[0_0_40px_rgba(0,255,255,0.2)] text-center">
-              <div className="text-5xl font-bold text-cyan-400 mb-3">$0.00025</div>
+              <div className="text-5xl font-bold text-cyan-400 mb-3">
+                $0.00025
+              </div>
               <div className="text-gray-400 text-lg">Average Fee</div>
             </div>
 
@@ -433,8 +443,8 @@ export default function Home() {
             </h2>
 
             <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto relative z-10">
-              Join thousands of users who trust Lunarys for secure,
-              private, and instant cross-chain transfers.
+              Join thousands of users who trust Lunarys for secure, private, and
+              instant cross-chain transfers.
             </p>
 
             <a href="/bridge">
