@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Shield, Zap, CheckCircle2, ArrowRight } from "lucide-react";
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -124,11 +129,11 @@ export default function Home() {
             >
               Docs
             </a>
-            <a href="/bridge">
-              <button className="px-6 py-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-semibold text-black hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] hover:scale-105">
+            <Link href="/bridge">
+              <Button className="bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-black font-semibold hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] hover:scale-105 transition-all duration-300">
                 Launch App
-              </button>
-            </a>
+              </Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -137,11 +142,9 @@ export default function Home() {
       <section className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 py-20">
         <div className="max-w-6xl mx-auto text-center space-y-8">
           <div className="space-y-6 animate-fade-in-up">
-            <div className="inline-block px-4 py-2 rounded-full border border-cyan-400/30 bg-cyan-400/5 backdrop-blur-sm mb-4">
-              <span className="text-sm text-cyan-400 font-semibold tracking-wide">
-                Powered by Zero-Knowledge Technology
-              </span>
-            </div>
+            <Badge variant="outline" className="border-cyan-400/30 bg-cyan-400/5 text-cyan-400 hover:bg-cyan-400/10 px-4 py-2 text-sm font-semibold tracking-wide mb-4">
+              Powered by Zero-Knowledge Technology
+            </Badge>
 
             <h1 className="text-6xl md:text-8xl font-bold tracking-tighter leading-none">
               The Future of
@@ -169,40 +172,47 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8 animate-fade-in-up animation-delay-200">
-            <a href="/bridge">
-              <button className="group px-10 py-5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-bold text-lg text-black hover:shadow-[0_0_50px_rgba(0,255,255,0.8)] hover:scale-105 transform">
+            <Link href="/bridge">
+              <Button size="lg" className="group px-10 py-7 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-black font-bold text-lg hover:shadow-[0_0_50px_rgba(0,255,255,0.8)] hover:scale-105 transition-all duration-300">
                 Start Bridging Now
-                <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">
-                  →
-                </span>
-              </button>
-            </a>
+                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
 
-            <a href="/bridge">
-              <button className="px-10 py-5 rounded-full border-2 border-cyan-400/40 hover:bg-cyan-400/10 transition-all duration-300 hover:border-cyan-400/80 backdrop-blur-sm font-bold text-lg hover:shadow-[0_0_30px_rgba(0,255,255,0.3)]">
+            <Link href="/bridge">
+              <Button size="lg" variant="outline" className="px-10 py-7 border-2 border-cyan-400/40 hover:bg-cyan-400/10 hover:border-cyan-400/80 backdrop-blur-sm font-bold text-lg text-white hover:shadow-[0_0_30px_rgba(0,255,255,0.3)]">
                 View Demo
-              </button>
-            </a>
+              </Button>
+            </Link>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-20 animate-fade-in-up animation-delay-400">
-            <div className="p-8 rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105">
-              <div className="text-5xl font-bold text-cyan-400 mb-2">100%</div>
-              <div className="text-gray-400 text-lg">Private & Encrypted</div>
-            </div>
+            <Card className="border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105">
+              <CardContent className="p-8 text-center">
+                <Shield className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
+                <div className="text-5xl font-bold text-cyan-400 mb-2">100%</div>
+                <div className="text-gray-400 text-lg">Private & Encrypted</div>
+              </CardContent>
+            </Card>
 
-            <div className="p-8 rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105">
-              <div className="text-5xl font-bold text-cyan-400 mb-2">Zero</div>
-              <div className="text-gray-400 text-lg">Data Leaks</div>
-            </div>
+            <Card className="border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105">
+              <CardContent className="p-8 text-center">
+                <CheckCircle2 className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
+                <div className="text-5xl font-bold text-cyan-400 mb-2">Zero</div>
+                <div className="text-gray-400 text-lg">Data Leaks</div>
+              </CardContent>
+            </Card>
 
-            <div className="p-8 rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105">
-              <div className="text-5xl font-bold text-cyan-400 mb-2">
-                &lt;1s
-              </div>
-              <div className="text-gray-400 text-lg">Settlement Time</div>
-            </div>
+            <Card className="border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent backdrop-blur-sm hover:border-cyan-400/40 transition-all duration-500 hover:scale-105">
+              <CardContent className="p-8 text-center">
+                <Zap className="w-12 h-12 text-cyan-400 mx-auto mb-4" />
+                <div className="text-5xl font-bold text-cyan-400 mb-2">
+                  &lt;1s
+                </div>
+                <div className="text-gray-400 text-lg">Settlement Time</div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -447,14 +457,12 @@ export default function Home() {
               instant cross-chain transfers.
             </p>
 
-            <a href="/bridge">
-              <button className="group px-12 py-6 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-bold text-xl text-black hover:shadow-[0_0_60px_rgba(0,255,255,0.9)] hover:scale-110 transform relative z-10">
+            <Link href="/bridge">
+              <Button size="lg" className="group px-12 py-8 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 font-bold text-xl text-black hover:shadow-[0_0_60px_rgba(0,255,255,0.9)] hover:scale-110 transition-all duration-300 relative z-10">
                 Launch App Now
-                <span className="inline-block ml-2 group-hover:translate-x-2 transition-transform">
-                  →
-                </span>
-              </button>
-            </a>
+                <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-2 transition-transform" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
