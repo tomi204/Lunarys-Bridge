@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 export default function BridgePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -104,7 +105,7 @@ export default function BridgePage() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 backdrop-blur-md bg-black/30 border-b border-cyan-400/10">
         <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <img
               src="/iso-logo.svg"
               alt="Lunarys Logo"
@@ -113,27 +114,24 @@ export default function BridgePage() {
             <span className="text-2xl font-bold tracking-tight text-white">
               LUNARYS
             </span>
-          </div>
+          </Link>
 
           <div className="flex items-center gap-8">
-            <a
+            <Link
               href="/"
               className="text-gray-300 hover:text-cyan-400 transition-colors duration-300 font-medium"
             >
               Home
-            </a>
-            <a
-              href="#"
-              className="text-cyan-400 font-semibold"
-            >
+            </Link>
+            <span className="text-cyan-400 font-semibold">
               Bridge
-            </a>
-            <a
-              href="#"
+            </span>
+            <Link
+              href="/#docs"
               className="text-gray-300 hover:text-cyan-400 transition-colors duration-300 font-medium"
             >
               Docs
-            </a>
+            </Link>
             <button className="px-6 py-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-semibold text-black hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] hover:scale-105">
               Connect Wallet
             </button>

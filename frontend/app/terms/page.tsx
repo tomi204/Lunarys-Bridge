@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 
 export default function TermsPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -94,7 +95,7 @@ export default function TermsPage() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 backdrop-blur-md bg-black/30 border-b border-cyan-400/10">
         <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
-          <a href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <img
               src="/iso-logo.svg"
               alt="Lunarys Logo"
@@ -103,27 +104,27 @@ export default function TermsPage() {
             <span className="text-2xl font-bold tracking-tight text-white">
               LUNARYS
             </span>
-          </a>
+          </Link>
 
           <div className="flex items-center gap-8">
-            <a
+            <Link
               href="/"
               className="text-gray-300 hover:text-cyan-400 transition-colors duration-300 font-medium"
             >
               Home
-            </a>
-            <a
+            </Link>
+            <Link
               href="/bridge"
               className="text-gray-300 hover:text-cyan-400 transition-colors duration-300 font-medium"
             >
               Bridge
-            </a>
-            <a
+            </Link>
+            <Link
               href="/#docs"
               className="text-gray-300 hover:text-cyan-400 transition-colors duration-300 font-medium"
             >
               Docs
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
