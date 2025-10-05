@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { Footer } from "@/components/footer";
 
 export default function TermsPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -107,12 +108,6 @@ export default function TermsPage() {
           </Link>
 
           <div className="flex items-center gap-8">
-            <Link
-              href="/"
-              className="text-gray-300 hover:text-cyan-400 transition-colors duration-300 font-medium"
-            >
-              Home
-            </Link>
             <Link
               href="/bridge"
               className="text-gray-300 hover:text-cyan-400 transition-colors duration-300 font-medium"
@@ -348,26 +343,7 @@ export default function TermsPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-cyan-400/10 bg-black/80 backdrop-blur-md mt-20">
-        <div className="max-w-7xl mx-auto px-8 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img
-                src="/iso-logo.svg"
-                alt="Lunarys Logo"
-                className="w-8 h-8 animate-spin-slow"
-              />
-              <span className="text-xl font-bold tracking-tight text-white">
-                LUNARYS
-              </span>
-            </div>
-            <p className="text-gray-500 text-sm">
-              © 2025 Lunarys. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
