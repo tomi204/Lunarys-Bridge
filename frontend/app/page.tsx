@@ -124,9 +124,11 @@ export default function Home() {
             >
               Docs
             </a>
-            <button className="px-6 py-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-semibold text-black hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] hover:scale-105">
-              Launch App
-            </button>
+            <a href="/bridge">
+              <button className="px-6 py-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-semibold text-black hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] hover:scale-105">
+                Launch App
+              </button>
+            </a>
           </div>
         </div>
       </nav>
@@ -167,16 +169,20 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8 animate-fade-in-up animation-delay-200">
-            <button className="group px-10 py-5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-bold text-lg text-black hover:shadow-[0_0_50px_rgba(0,255,255,0.8)] hover:scale-105 transform">
-              Start Bridging Now
-              <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">
-                →
-              </span>
-            </button>
+            <a href="/bridge">
+              <button className="group px-10 py-5 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-bold text-lg text-black hover:shadow-[0_0_50px_rgba(0,255,255,0.8)] hover:scale-105 transform">
+                Start Bridging Now
+                <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">
+                  →
+                </span>
+              </button>
+            </a>
 
-            <button className="px-10 py-5 rounded-full border-2 border-cyan-400/40 hover:bg-cyan-400/10 transition-all duration-300 hover:border-cyan-400/80 backdrop-blur-sm font-bold text-lg hover:shadow-[0_0_30px_rgba(0,255,255,0.3)]">
-              View Demo
-            </button>
+            <a href="/bridge">
+              <button className="px-10 py-5 rounded-full border-2 border-cyan-400/40 hover:bg-cyan-400/10 transition-all duration-300 hover:border-cyan-400/80 backdrop-blur-sm font-bold text-lg hover:shadow-[0_0_30px_rgba(0,255,255,0.3)]">
+                View Demo
+              </button>
+            </a>
           </div>
 
           {/* Stats */}
@@ -431,12 +437,14 @@ export default function Home() {
               private, and instant cross-chain transfers.
             </p>
 
-            <button className="group px-12 py-6 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-bold text-xl text-black hover:shadow-[0_0_60px_rgba(0,255,255,0.9)] hover:scale-110 transform relative z-10">
-              Launch App Now
-              <span className="inline-block ml-2 group-hover:translate-x-2 transition-transform">
-                →
-              </span>
-            </button>
+            <a href="/bridge">
+              <button className="group px-12 py-6 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 transition-all duration-300 font-bold text-xl text-black hover:shadow-[0_0_60px_rgba(0,255,255,0.9)] hover:scale-110 transform relative z-10">
+                Launch App Now
+                <span className="inline-block ml-2 group-hover:translate-x-2 transition-transform">
+                  →
+                </span>
+              </button>
+            </a>
           </div>
         </div>
       </section>
@@ -645,7 +653,7 @@ export default function Home() {
                 Privacy Policy
               </a>
               <a
-                href="#"
+                href="/terms"
                 className="text-gray-500 hover:text-cyan-400 transition-colors text-sm"
               >
                 Terms of Service
