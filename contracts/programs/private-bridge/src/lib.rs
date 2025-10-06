@@ -2,10 +2,10 @@
 #![allow(deprecated)]
 use anchor_lang::prelude::*;
 
-declare_id!("25KbnYJgHByaUJ89JRg5vDgaHhm77y31gLLERwSZkpLB");
+declare_id!("9m6Vt3pBzRCmdAzwxuxkZ3t9dfbFZeTxuTPZegxJcM7s");
 
 #[program]
-pub mod contracts {
+pub mod private_bridge {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
