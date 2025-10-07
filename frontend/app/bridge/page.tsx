@@ -1,375 +1,322 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
+import { ArrowDownUp, ArrowRight } from "lucide-react";
+
+import { ConstellationBackground } from "@/components/constellation-background";
+import { Footer } from "@/components/footer";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { ArrowDownUp, Shield, Clock, Zap } from "lucide-react";
-import { Footer } from "@/components/footer";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const chainOptions = [
+  {
+    value: "solana-devnet",
+    label: "Solana Devnet",
+    tagline: "Finality < 1s",
+  },
+  {
+    value: "sepolia",
+    label: "Sepolia",
+    tagline: "Ethereum testnet",
+  },
+];
+
+const tokenOptions = [
+  { value: "SOL", label: "SOL", subtitle: "Native Solana token" },
+  { value: "USDC", label: "USDC", subtitle: "Dollar stablecoin" },
+];
+
+const quickStats = [
+  { label: "Privacy score", value: "99.1%" },
+  { label: "ETA", value: "0.58s" },
+  { label: "Route", value: "Tier 1" },
+];
 
 export default function BridgePage() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fromChain, setFromChain] = useState("solana");
-  const [toChain, setToChain] = useState("ethereum");
-  const [amount, setAmount] = useState("");
+  const [fromChain, setFromChain] = useState("solana-devnet");
+  const [toChain, setToChain] = useState("sepolia");
+  const [amount, setAmount] = useState("10.00");
   const [selectedToken, setSelectedToken] = useState("SOL");
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const numericAmount = useMemo(() => {
+    const parsed = Number.parseFloat(amount);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, [amount]);
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const particles: Array<{
-      x: number;
-      y: number;
-      size: number;
-      speedX: number;
-      speedY: number;
-      opacity: number;
-    }> = [];
-
-    for (let i = 0; i < 150; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 2 + 0.5,
-        speedX: (Math.random() - 0.5) * 0.3,
-        speedY: (Math.random() - 0.5) * 0.3,
-        opacity: Math.random() * 0.5 + 0.1,
-      });
-    }
-
-    function animate() {
-      if (!ctx || !canvas) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      particles.forEach((particle) => {
-        particle.x += particle.speedX;
-        particle.y += particle.speedY;
-
-        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
-        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
-
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 255, 255, ${particle.opacity})`;
-        ctx.fill();
-      });
-
-      particles.forEach((p1, i) => {
-        particles.slice(i + 1).forEach((p2) => {
-          const dx = p1.x - p2.x;
-          const dy = p1.y - p2.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < 150) {
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(0, 255, 255, ${
-              0.1 * (1 - distance / 150)
-            })`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
+  const estimatedReceive = useMemo(() => {
+    const value = numericAmount * 0.996;
+    return value <= 0
+      ? "0.00"
+      : value.toLocaleString("en-US", {
+          maximumFractionDigits: 4,
+          minimumFractionDigits: 2,
         });
-      });
+  }, [numericAmount]);
 
-      requestAnimationFrame(animate);
-    }
+  const protocolFee = useMemo(() => {
+    const value = numericAmount * 0.0025;
+    return value <= 0
+      ? "0.000"
+      : value.toLocaleString("en-US", {
+          maximumFractionDigits: 3,
+          minimumFractionDigits: 3,
+        });
+  }, [numericAmount]);
 
-    animate();
-
-    const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  const networkFee = useMemo(() => {
+    const value = numericAmount * 0.0004;
+    return value <= 0
+      ? "0.000"
+      : value.toLocaleString("en-US", {
+          maximumFractionDigits: 3,
+          minimumFractionDigits: 3,
+        });
+  }, [numericAmount]);
 
   const handleSwapChains = () => {
-    const temp = fromChain;
+    if (fromChain === toChain) return;
     setFromChain(toChain);
-    setToChain(temp);
+    setToChain(fromChain);
   };
 
+  const fromDetails = chainOptions.find((chain) => chain.value === fromChain);
+  const toDetails = chainOptions.find((chain) => chain.value === toChain);
+
   return (
-    <div className="relative bg-black text-white min-h-screen overflow-x-hidden flex flex-col">
-      <canvas ref={canvasRef} className="fixed inset-0 z-0" />
+    <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
+      <ConstellationBackground className="z-0" particleCount={220} maxLineDistance={200} />
+      <div className="absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(56,226,255,0.25),transparent_60%)]" />
+      <div className="absolute bottom-[-20%] left-[15%] h-[420px] w-[420px] rounded-full bg-violet-500/25 blur-[140px]" />
+      <div className="absolute top-[30%] right-[-5%] h-[460px] w-[460px] rounded-full bg-cyan-500/25 blur-[140px]" />
 
-      <div className="fixed inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/70 z-[1] pointer-events-none" />
-
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 backdrop-blur-md bg-black/30 border-b border-cyan-400/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex justify-between items-center">
+      <header className="relative z-20">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-8">
           <Link href="/" className="flex items-center gap-3">
-            <img
+            <Image
               src="/iso-logo.svg"
-              alt="Lunarys Logo"
-              className="w-8 h-8 sm:w-10 sm:h-10 animate-spin-slow"
+              alt="Lunarys logo"
+              width={36}
+              height={36}
+              className="h-9 w-9 animate-spin-slow"
+              priority
             />
-            <span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              LUNARYS
-            </span>
+            <span className="text-2xl font-semibold tracking-tight">Lunarys</span>
           </Link>
-
-          <div className="flex items-center gap-4 sm:gap-8">
-            <span className="text-cyan-400 font-semibold text-sm sm:text-base">
-              Bridge
-            </span>
+          <nav className="hidden items-center gap-10 rounded-full border border-white/5 bg-white/5 px-6 py-2 backdrop-blur-xl md:flex">
+            <Link
+              href="/"
+              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
+            >
+              Home
+            </Link>
+            <Link
+              href="/#experience"
+              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
+            >
+              Features
+            </Link>
             <Link
               href="/#docs"
-              className="hidden sm:block text-gray-300 hover:text-cyan-400 transition-colors duration-300 font-medium"
+              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
             >
               Docs
             </Link>
-            <Button className="bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-black font-semibold hover:shadow-[0_0_30px_rgba(0,255,255,0.5)] hover:scale-105 transition-all duration-300 text-sm sm:text-base px-4 sm:px-6">
-              Connect Wallet
+            <Link
+              href="/#team"
+              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
+            >
+              Team
+            </Link>
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/terms"
+              className="hidden text-sm text-gray-200 transition-colors hover:text-white md:block"
+            >
+              Terms
+            </Link>
+            <Button className="bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 px-6 py-5 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)]">
+              Connect wallet
             </Button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* Bridge Section */}
-      <section className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 py-6 sm:py-8">
-        <div className="w-full max-w-6xl">
-          {/* Header */}
-          <div className="text-center mb-6 sm:mb-8 animate-fade-in-up">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-2">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-cyan-500">
-                Bridge Assets
-              </span>
+      <main className="relative z-10 px-6 pb-24">
+        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 pt-16 text-center">
+          <div className="flex flex-col items-center gap-3">
+            <Badge className="bg-white/10 text-cyan-200">Bridge cockpit</Badge>
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+              Launch a private bridge
             </h1>
-            <p className="text-gray-400 text-sm sm:text-base md:text-lg">
-              Transfer your assets across chains with complete privacy
-            </p>
           </div>
 
-          {/* Main Bridge Card - Wide Layout */}
-          <Card className="border-cyan-400/20 bg-black/40 backdrop-blur-xl shadow-[0_0_60px_rgba(0,255,255,0.1)] animate-fade-in-up animation-delay-200">
-            <CardContent className="p-4 sm:p-6 md:p-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-                {/* Left Column - From/To */}
-                <div className="space-y-4">
-                  {/* From Chain */}
-                  <div className="space-y-2">
-                    <Label className="text-sm text-gray-400 font-medium">From</Label>
-                    <Card className="border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent hover:border-cyan-400/40 transition-all duration-300">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <Select value={fromChain} onValueChange={setFromChain}>
-                            <SelectTrigger className="w-[120px] border-0 bg-transparent text-base font-semibold text-white focus:ring-0 focus:ring-offset-0 hover:text-cyan-400">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-black border-cyan-400/30">
-                              <SelectItem value="solana" className="text-white hover:text-cyan-400">Solana</SelectItem>
-                            </SelectContent>
-                          </Select>
-
-                          <Select value={selectedToken} onValueChange={setSelectedToken}>
-                            <SelectTrigger className="w-[100px] bg-cyan-400/10 border-cyan-400/30 text-white font-semibold hover:bg-cyan-400/20">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-black border-cyan-400/30">
-                              <SelectItem value="SOL" className="text-white hover:text-cyan-400">SOL</SelectItem>
-                              <SelectItem value="USDC" className="text-white hover:text-cyan-400">USDC</SelectItem>
-                              <SelectItem value="USDT" className="text-white hover:text-cyan-400">USDT</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <Input
-                          type="text"
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          placeholder="0.00"
-                          className="text-2xl sm:text-3xl font-bold bg-transparent border-0 text-white placeholder-gray-600 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto"
-                        />
-
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs sm:text-sm text-gray-500">
-                            Balance: 0.00 {selectedToken}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-400/10 h-auto p-1 font-semibold text-xs"
-                          >
-                            MAX
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+          <Card className="w-full border-white/10 bg-white/5 shadow-[0_45px_140px_-80px_rgba(56,226,255,0.8)]">
+            <CardContent className="space-y-8 p-8">
+              <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
+                <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
+                    <Label className="text-xs uppercase tracking-widest text-gray-400">
+                      From
+                    </Label>
+                    {fromDetails ? (
+                      <span className="text-gray-500">{fromDetails.tagline}</span>
+                    ) : null}
                   </div>
-
-                  {/* Swap Button - Horizontal on mobile */}
-                  <div className="flex justify-center lg:hidden">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Select value={fromChain} onValueChange={setFromChain}>
+                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#030712] text-white">
+                        {chainOptions.map((chain) => (
+                          <SelectItem
+                            key={chain.value}
+                            value={chain.value}
+                            disabled={chain.value === toChain}
+                          >
+                            <div className="flex flex-col">
+                              <span>{chain.label}</span>
+                              <span className="text-xs text-gray-400">{chain.tagline}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={selectedToken} onValueChange={setSelectedToken}>
+                      <SelectTrigger className="w-[120px] border-white/10 bg-white/10 text-base font-semibold text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#030712] text-white">
+                        {tokenOptions.map((token) => (
+                          <SelectItem key={token.value} value={token.value}>
+                            <div className="flex flex-col">
+                              <span>{token.label}</span>
+                              <span className="text-xs text-gray-400">{token.subtitle}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Input
+                    type="number"
+                    value={amount}
+                    min="0"
+                    onChange={(event) => setAmount(event.target.value)}
+                    className="border-0 bg-transparent p-0 text-4xl font-semibold text-white focus-visible:ring-0"
+                  />
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>Balance: 126.84 {selectedToken}</span>
                     <Button
-                      onClick={handleSwapChains}
-                      variant="outline"
-                      size="icon"
-                      className="rounded-xl border-2 border-cyan-400/30 bg-black hover:bg-cyan-400/10 hover:border-cyan-400/60 transition-all duration-300 hover:scale-110 hover:rotate-180"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-3 py-1 text-xs font-semibold text-white hover:bg-white/10"
                     >
-                      <ArrowDownUp className="h-5 w-5 text-cyan-400" />
+                      Max
                     </Button>
                   </div>
-
-                  {/* To Chain */}
-                  <div className="space-y-2">
-                    <Label className="text-sm text-gray-400 font-medium">To</Label>
-                    <Card className="border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 to-transparent hover:border-cyan-400/40 transition-all duration-300">
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <Select value={toChain} onValueChange={setToChain}>
-                            <SelectTrigger className="w-[120px] border-0 bg-transparent text-base font-semibold text-white focus:ring-0 focus:ring-offset-0 hover:text-cyan-400">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-black border-cyan-400/30">
-                              <SelectItem value="ethereum" className="text-white hover:text-cyan-400">Ethereum</SelectItem>
-                              <SelectItem value="polygon" className="text-white hover:text-cyan-400">Polygon</SelectItem>
-                              <SelectItem value="arbitrum" className="text-white hover:text-cyan-400">Arbitrum</SelectItem>
-                              <SelectItem value="optimism" className="text-white hover:text-cyan-400">Optimism</SelectItem>
-                            </SelectContent>
-                          </Select>
-
-                          <Badge className="bg-cyan-400/10 border-cyan-400/30 text-white hover:bg-cyan-400/20 px-3 py-1">
-                            {selectedToken}
-                          </Badge>
-                        </div>
-
-                        <div className="text-2xl sm:text-3xl font-bold text-white">
-                          {amount || "0.00"}
-                        </div>
-
-                        <div className="text-xs sm:text-sm text-gray-500">
-                          You will receive: ~{amount || "0.00"} {selectedToken}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
                 </div>
 
-                {/* Right Column - Info & Actions */}
-                <div className="space-y-4 flex flex-col">
-                  {/* Bridge Info */}
-                  <Card className="border-cyan-400/10 bg-cyan-400/5 flex-1">
-                    <CardContent className="p-4 space-y-2">
-                      <h3 className="text-sm font-semibold text-white mb-3">Bridge Details</h3>
-                      <div className="flex justify-between items-center text-sm">
-                        <div className="flex items-center gap-2 text-gray-400">
-                          <Clock className="w-4 h-4" />
-                          <span>Time</span>
-                        </div>
-                        <span className="text-white font-semibold">~30s</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400">Bridge Fee</span>
-                        <span className="text-white font-semibold">0.1%</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-400">Network Fee</span>
-                        <span className="text-white font-semibold">~$0.01</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Privacy Badge */}
-                  <Card className="border-cyan-400/20 bg-gradient-to-r from-cyan-400/10 to-cyan-500/10">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-3">
-                        <Shield className="w-5 h-5 text-cyan-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs sm:text-sm text-cyan-400 font-semibold">
-                            Zero-Knowledge Privacy
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            Encrypted with Arcium
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Stats Row - Desktop */}
-                  <div className="hidden lg:grid grid-cols-3 gap-2">
-                    <Card className="border-cyan-400/10 bg-black/30 backdrop-blur-sm hover:border-cyan-400/30 transition-all text-center">
-                      <CardContent className="p-3">
-                        <Zap className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                        <div className="text-lg font-bold text-cyan-400">&lt;1s</div>
-                        <div className="text-xs text-gray-400">Fast</div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-cyan-400/10 bg-black/30 backdrop-blur-sm hover:border-cyan-400/30 transition-all text-center">
-                      <CardContent className="p-3">
-                        <Shield className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                        <div className="text-lg font-bold text-cyan-400">100%</div>
-                        <div className="text-xs text-gray-400">Private</div>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-cyan-400/10 bg-black/30 backdrop-blur-sm hover:border-cyan-400/30 transition-all text-center">
-                      <CardContent className="p-3">
-                        <Shield className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                        <div className="text-lg font-bold text-cyan-400">Zero</div>
-                        <div className="text-xs text-gray-400">Leaks</div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Bridge Button */}
+                <div className="flex items-center justify-center">
                   <Button
-                    className="w-full h-12 sm:h-14 bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 text-black font-bold text-base sm:text-lg hover:shadow-[0_0_40px_rgba(0,255,255,0.6)] hover:scale-[1.02] transition-all duration-300"
+                    onClick={handleSwapChains}
+                    variant="outline"
+                    size="icon"
+                    className="rounded-2xl border border-white/20 bg-white/10 p-3 text-white transition-all hover:-translate-y-1 hover:bg-white/20"
+                    disabled={fromChain === toChain}
+                    aria-label="Swap chains"
                   >
-                    Bridge Assets
+                    <ArrowDownUp className="h-6 w-6" />
                   </Button>
+                </div>
 
-                  <p className="text-xs text-center text-gray-500">
-                    By bridging, you agree to our{" "}
-                    <Link href="/terms" className="text-cyan-400 hover:text-cyan-300">
-                      Terms of Service
-                    </Link>
-                  </p>
+                <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
+                    <Label className="text-xs uppercase tracking-widest text-gray-400">
+                      To
+                    </Label>
+                    {toDetails ? (
+                      <span className="text-gray-500">{toDetails.tagline}</span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Select value={toChain} onValueChange={setToChain}>
+                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#030712] text-white">
+                        {chainOptions.map((chain) => (
+                          <SelectItem
+                            key={chain.value}
+                            value={chain.value}
+                            disabled={chain.value === fromChain}
+                          >
+                            <div className="flex flex-col">
+                              <span>{chain.label}</span>
+                              <span className="text-xs text-gray-400">{chain.tagline}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white">
+                      Receive · {selectedToken}
+                    </div>
+                  </div>
+                  <div className="grid gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
+                    <div className="flex items-center justify-between">
+                      <span>You receive</span>
+                      <span className="text-lg font-semibold text-white">
+                        {estimatedReceive} {selectedToken}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>Protocol fee</span>
+                      <span>{protocolFee} {selectedToken}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-400">
+                      <span>Network fee</span>
+                      <span>{networkFee} {selectedToken}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Stats Row - Mobile */}
-              <div className="grid lg:hidden grid-cols-3 gap-3 mt-4">
-                <Card className="border-cyan-400/10 bg-black/30 backdrop-blur-sm hover:border-cyan-400/30 transition-all text-center">
-                  <CardContent className="p-3">
-                    <Zap className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                    <div className="text-lg font-bold text-cyan-400">&lt;1s</div>
-                    <div className="text-xs text-gray-400">Fast</div>
-                  </CardContent>
-                </Card>
-                <Card className="border-cyan-400/10 bg-black/30 backdrop-blur-sm hover:border-cyan-400/30 transition-all text-center">
-                  <CardContent className="p-3">
-                    <Shield className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                    <div className="text-lg font-bold text-cyan-400">100%</div>
-                    <div className="text-xs text-gray-400">Private</div>
-                  </CardContent>
-                </Card>
-                <Card className="border-cyan-400/10 bg-black/30 backdrop-blur-sm hover:border-cyan-400/30 transition-all text-center">
-                  <CardContent className="p-3">
-                    <Shield className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                    <div className="text-lg font-bold text-cyan-400">Zero</div>
-                    <div className="text-xs text-gray-400">Leaks</div>
-                  </CardContent>
-                </Card>
-              </div>
+              <Button className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)]">
+                Initiate bridge
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
             </CardContent>
           </Card>
+
+          <div className="grid w-full gap-4 text-sm text-gray-400 sm:grid-cols-3">
+            {quickStats.map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-center backdrop-blur"
+              >
+                <span className="text-xs uppercase tracking-[0.35em] text-gray-500">
+                  {stat.label}
+                </span>
+                <div className="mt-2 text-2xl font-semibold text-white">{stat.value}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </section>
+      </main>
 
       <Footer />
     </div>
