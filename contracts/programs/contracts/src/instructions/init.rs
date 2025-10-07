@@ -1,6 +1,8 @@
 use crate::ID;
 use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
+use arcium_client::idl::arcium::types::{CircuitSource, OffChainCircuitSource};
+
 
 // This macro implements InitCompDefAccs for the struct
 #[init_computation_definition_accounts("plan_payout", payer)]
@@ -23,7 +25,15 @@ pub struct InitPlanPayoutCompDef<'info> {
 }
 
 pub fn handler(ctx: Context<InitPlanPayoutCompDef>) -> Result<()> {
-    // (allow_untrusted_senders = true, compute_units = 0, fees = None, expiry = None)
-    init_comp_def(ctx.accounts, true, 0, None, None)?;
+    init_comp_def(
+        ctx.accounts,
+        true, // allow_untrusted_senders
+        0,    // CU
+        Some(CircuitSource::OffChain(OffChainCircuitSource {
+            source: "https://gateway.pinata.cloud/ipfs/bafybeias7etzkgaaqktjq4tkxb2ptxz4e3qhv5tjzwfk2luufy5pqv5fn4".to_string(),
+            hash: [0u8; 32],
+        })),
+        None,
+    )?;
     Ok(())
 }
