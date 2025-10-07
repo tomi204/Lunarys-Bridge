@@ -143,7 +143,16 @@ const ScannerCardStream = ({
     const ctx = scannerCanvas.getContext('2d')!;
     scannerCanvas.width = window.innerWidth;
     scannerCanvas.height = 300;
-    let scannerParticles: any[] = [];
+    const scannerParticles: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      radius: number;
+      alpha: number;
+      life: number;
+      decay: number;
+    }> = [];
     const baseMaxParticles = 800;
     let currentMaxParticles = baseMaxParticles;
     const scanTargetMaxParticles = 2500;

@@ -171,7 +171,7 @@ const RippleButton: React.FC<RippleButtonProps> = ({
           style={{
             left: ripple.x, top: ripple.y, width: ripple.size, height: ripple.size,
             backgroundColor: ripple.color,
-            ['--ripple-duration' as any]: `${rippleDuration}ms`,
+            '--ripple-duration': `${rippleDuration}ms`,
           } as CSSProperties}
         />
       ))}

@@ -654,7 +654,7 @@ export default function Home() {
               {teamMembers.map((member) => (
                 <div
                   key={member.name}
-                  className="group flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur transition-transform duration-300 hover:-translate-y-2"
+                  className="group flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur transition-all duration-300 hover:-translate-y-2 shadow-[0_0_40px_-10px_rgba(56,226,255,0.3)] hover:shadow-[0_0_60px_-5px_rgba(56,226,255,0.5)] hover:border-cyan-400/30 hover:bg-white/10"
                 >
                   <div className="relative h-32 w-32 overflow-hidden rounded-full border border-white/10 bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.25),rgba(30,41,59,0.85))]">
                     <div className="absolute inset-0 flex items-center justify-center text-lg font-semibold tracking-[0.35em] text-gray-400">
