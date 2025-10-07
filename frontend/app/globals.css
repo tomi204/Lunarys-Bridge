@@ -41,6 +41,13 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-none: 0px;
+  --radius-xs: 0.125rem;
+  --radius-default: 0.375rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.875rem;
+  --radius-full: 9999px;
+  --color-button-ripple-color: var(----button-ripple-color);
 }
 
 :root {
@@ -80,6 +87,7 @@
   --chart-3: 180 100% 30%;
   --chart-4: 180 100% 60%;
   --chart-5: 180 100% 70%;
+  --button-ripple-color: oklch(0.145 0 0 / 0.3);
 }
 
 .dark {
@@ -102,6 +110,7 @@
   --border: 180 100% 50% / 0.2;
   --input: 180 100% 50% / 0.15;
   --ring: 180 100% 50%;
+  --button-ripple-color: oklch(0.985 0 0 / 0.5);
 }
 
 @layer base {
