@@ -65,7 +65,7 @@ pub mod new_contracts {
         // Visible amount (MVP without Confidential Transfers)
         amount: u64,
     ) -> Result<()> {
-        // 1) Lock SPL in escrow
+        // 1 = Lock SPL in escrow
         token::transfer_checked(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
