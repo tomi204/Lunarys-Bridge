@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScannerCardStream } from "@/components/ui/scanner-card-stream";
 
 const chainOptions = [
   {
@@ -49,6 +50,7 @@ export default function BridgePage() {
   const [toChain, setToChain] = useState("sepolia");
   const [amount, setAmount] = useState("10.00");
   const [selectedToken, setSelectedToken] = useState("SOL");
+  const [isLoading, setIsLoading] = useState(false);
 
   const numericAmount = useMemo(() => {
     const parsed = Number.parseFloat(amount);
@@ -91,11 +93,20 @@ export default function BridgePage() {
     setToChain(fromChain);
   };
 
+  const handleInitiateBridge = () => {
+    setIsLoading(true);
+    // Simular carga por 5 segundos
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 5000);
+  };
+
   const fromDetails = chainOptions.find((chain) => chain.value === fromChain);
   const toDetails = chainOptions.find((chain) => chain.value === toChain);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
+      {isLoading && <ScannerCardStream />}
       <ConstellationBackground className="z-0" particleCount={220} maxLineDistance={200} />
       <div className="absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(56,226,255,0.25),transparent_60%)]" />
       <div className="absolute bottom-[-20%] left-[15%] h-[420px] w-[420px] rounded-full bg-violet-500/25 blur-[140px]" />
@@ -295,8 +306,12 @@ export default function BridgePage() {
                 </div>
               </div>
 
-              <Button className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)]">
-                Initiate bridge
+              <Button
+                onClick={handleInitiateBridge}
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Processing..." : "Initiate bridge"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </CardContent>

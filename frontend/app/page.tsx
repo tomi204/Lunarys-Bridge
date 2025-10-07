@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -22,6 +23,8 @@ import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LampContainer } from "@/components/ui/lamp";
+import { SplashCursor } from "@/components/ui/splash-cursor";
 
 type Feature = {
   title: string;
@@ -163,35 +166,12 @@ const teamMembers = [
     bio: "Bridge ops strategist turning compliance packs into battle-tested runbooks.",
     initials: "SI",
   },
-  {
-    name: "Vera Stanton",
-    role: "Product design",
-    bio: "Product storyteller shaping privacy-first surfaces and cinematic bridge flows.",
-    initials: "VS",
-  },
-  {
-    name: "Noah Talbot",
-    role: "Telemetry",
-    bio: "Real-time telemetry lead turning raw proofs into actionable command signals.",
-    initials: "NT",
-  },
-  {
-    name: "Rhea Calder",
-    role: "Risk and policy",
-    bio: "Risk strategist aligning policy packs with evolving on-chain and regulatory requirements.",
-    initials: "RC",
-  },
-  {
-    name: "Jonah Velez",
-    role: "Developer relations",
-    bio: "Developer advocate growing the Lunarys integrator ecosystem across ecosystems.",
-    initials: "JV",
-  },
 ];
 
 export default function Home() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
+      <SplashCursor />
       <ConstellationBackground
         className="z-0"
         maxLineDistance={190}
@@ -650,18 +630,25 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="team" className="relative px-6 pb-28">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-12 text-center">
-              <Badge className="bg-white/10 text-cyan-200">Team</Badge>
-              <h2 className="mt-4 text-3xl font-semibold sm:text-5xl">
-                Builders behind Lunarys
-              </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-lg text-gray-300">
-                Cryptography natives, protocol engineers, and operators crafting
-                privacy-first liquidity rails.
-              </p>
-            </div>
+        <section id="team" className="relative px-6 pb-32">
+          <div className="mx-auto max-w-7xl space-y-16">
+            <LampContainer className="min-h-[560px] rounded-3xl border border-white/10 bg-slate-950/90 px-4 py-24 shadow-[0_60px_160px_-80px_rgba(56,226,255,0.55)] md:px-10">
+              <motion.div
+                initial={{ opacity: 0.4, y: 120 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.8, ease: "easeInOut" }}
+                className="flex max-w-3xl flex-col items-center space-y-4 text-center"
+              >
+                <Badge className="bg-white/10 text-cyan-200">Team</Badge>
+                <h2 className="text-3xl font-semibold sm:text-5xl">
+                  Builders behind Lunarys
+                </h2>
+                <p className="text-lg text-gray-300">
+                  Cryptography natives, protocol engineers, and operators crafting
+                  privacy-first liquidity rails.
+                </p>
+              </motion.div>
+            </LampContainer>
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
               {teamMembers.map((member) => (
