@@ -29,7 +29,7 @@ pub(crate) use instructions::deposit::__client_accounts_deposit_and_queue;
 pub(crate) use instructions::init::__client_accounts_init_plan_payout_comp_def;
 pub(crate) use instructions::queue::__client_accounts_queue_plan_payout;
 
-declare_id!("CoCnSp3ooSWqVaaaKiw9WS3fEZ1yXzasta28SfPaUmxD");
+declare_id!("AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by");
 
 #[arcium_program]
 pub mod contracts {
