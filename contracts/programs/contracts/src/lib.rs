@@ -18,14 +18,15 @@ pub mod instructions;
 
 // Re-export handlers and Contexts so entrypoints can delegate cleanly
 pub use instructions::{
-    deposit_and_queue_handler, init_plan_payout_comp_def_handler, plan_payout_callback_handler,
-    queue_plan_payout_handler, DepositAndQueue, InitPlanPayoutCompDef, PlanPayoutCallback,
-    QueuePlanPayout,
+    deposit_and_queue_handler, deposit_sol_and_queue_handler, init_plan_payout_comp_def_handler,
+    plan_payout_callback_handler, queue_plan_payout_handler, DepositAndQueue, DepositSolAndQueue,
+    InitPlanPayoutCompDef, PlanPayoutCallback, QueuePlanPayout,
 };
 
 // Aliases the #[arcium_program] macro expects to find at crate root
 pub(crate) use instructions::callback::__client_accounts_plan_payout_callback;
 pub(crate) use instructions::deposit::__client_accounts_deposit_and_queue;
+pub(crate) use instructions::deposit_sol::__client_accounts_deposit_sol_and_queue;
 pub(crate) use instructions::init::__client_accounts_init_plan_payout_comp_def;
 pub(crate) use instructions::queue::__client_accounts_queue_plan_payout;
 
@@ -78,6 +79,32 @@ pub mod contracts {
             amount_commitment,
             recipient_hash,
             amount,
+        )
+    }
+
+    // ---- Deposit SOL→WSOL + Queue ----
+    // (usa la misma firma que tu handler de deposit_sol para mantener consistencia)
+    pub fn deposit_sol_and_queue(
+        ctx: Context<DepositSolAndQueue>,
+        computation_offset: u64,
+        amount_ct: [u8; 32],
+        recipient_tag_ct: [u8; 32],
+        pub_key: [u8; 32],
+        nonce: u128,
+        amount_commitment: [u8; 32],
+        recipient_hash: [u8; 32],
+        lamports: u64,
+    ) -> Result<()> {
+        deposit_sol_and_queue_handler(
+            ctx,
+            computation_offset,
+            amount_ct,
+            recipient_tag_ct,
+            pub_key,
+            nonce,
+            amount_commitment,
+            recipient_hash,
+            lamports,
         )
     }
 
