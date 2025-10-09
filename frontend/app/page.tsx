@@ -143,28 +143,25 @@ const docsHighlights = [
 
 const teamMembers = [
   {
-    name: "Amina Harrington",
-    role: "Zero-knowledge architecture",
-    bio: "Ex-Arcium cryptographer orchestrating Lunarys' ZK circuits and enclave integrations.",
-    initials: "AH",
+    name: "Luciano Carreño",
+    role: "CLO",
+    bio: "4 years as a web3 developer and a licensed lawyer, bridging tech with the legal & regulatory world",
+    initials: "LC",
+    image: "/luc.png",
   },
   {
-    name: "Diego Morozov",
-    role: "Liquidity engineering",
-    bio: "Former Raydium quant building responsive liquidity routing and protection valves.",
-    initials: "DM",
+    name: "Fabian Diaz",
+    role: "CTO",
+    bio: "5 years of experience leading technical architecture and smart contracts in high-impact web3 projects",
+    initials: "FD",
+    image: "/fab.jpeg",
   },
   {
-    name: "Kai Nakamura",
-    role: "Hardware security",
-    bio: "HSM specialist securing attestation flow, key ceremonies, and hardware identities.",
-    initials: "KN",
-  },
-  {
-    name: "Selene Idris",
-    role: "Protocol ops",
-    bio: "Bridge ops strategist turning compliance packs into battle-tested runbooks.",
-    initials: "SI",
+    name: "Tomas Oliver",
+    role: "CEO",
+    bio: "5+ years as a full-stack developer, building across top protocols and alumni of global incubators like Avalanche Codebase and Odisea",
+    initials: "TO",
+    image: "/to.JPG",
   },
 ];
 
@@ -631,48 +628,65 @@ export default function Home() {
         </section>
 
         <section id="team" className="relative px-6 pb-32">
-          <div className="mx-auto max-w-7xl space-y-16">
-            <LampContainer className="min-h-[560px] rounded-3xl border border-white/10 bg-slate-950/90 px-4 py-24 shadow-[0_60px_160px_-80px_rgba(56,226,255,0.55)] md:px-10">
+          <div className="mx-auto max-w-7xl space-y-12">
+            {/* Title Section - Above the lamp */}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.8, ease: "easeInOut" }}
+              className="flex max-w-3xl mx-auto flex-col items-center space-y-4 text-center"
+            >
+              <Badge className="bg-white/10 text-cyan-200">Team</Badge>
+              <h2 className="text-3xl font-semibold sm:text-5xl">
+                Builders behind Lunarys
+              </h2>
+              <p className="text-lg text-gray-300">
+                Cryptography natives, protocol engineers, and operators crafting
+                privacy-first liquidity rails.
+              </p>
+            </motion.div>
+
+            <LampContainer className="min-h-[800px] rounded-3xl border border-white/10 bg-slate-950/90 px-4 pb-4 pt-20 shadow-[0_60px_160px_-80px_rgba(56,226,255,0.55)] md:px-10">
               <motion.div
-                initial={{ opacity: 0.4, y: 120 }}
+                initial={{ opacity: 0, y: 60 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.8, ease: "easeInOut" }}
-                className="flex max-w-3xl flex-col items-center space-y-4 text-center"
+                transition={{ delay: 0.4, duration: 0.8, ease: "easeInOut" }}
+                className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 w-full max-w-4xl justify-items-center"
               >
-                <Badge className="bg-white/10 text-cyan-200">Team</Badge>
-                <h2 className="text-3xl font-semibold sm:text-5xl">
-                  Builders behind Lunarys
-                </h2>
-                <p className="text-lg text-gray-300">
-                  Cryptography natives, protocol engineers, and operators crafting
-                  privacy-first liquidity rails.
-                </p>
+                {teamMembers.map((member, index) => (
+                  <motion.div
+                    key={member.name}
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{
+                      delay: 0.5 + index * 0.1,
+                      duration: 0.6,
+                      ease: "easeOut",
+                    }}
+                    className="group flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur transition-all duration-300 hover:-translate-y-2 shadow-[0_0_40px_-10px_rgba(56,226,255,0.3)] hover:shadow-[0_0_60px_-5px_rgba(56,226,255,0.5)] hover:border-cyan-400/30 hover:bg-white/10"
+                  >
+                    <div className="relative h-32 w-32 overflow-hidden rounded-full border border-white/10 bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.25),rgba(30,41,59,0.85))]">
+                      <Image
+                        src={member.image}
+                        alt={member.name}
+                        fill
+                        className="object-cover"
+                        sizes="128px"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-semibold text-white">
+                        {member.name}
+                      </h3>
+                      <p className="text-sm uppercase tracking-[0.35em] text-cyan-200/80">
+                        {member.role}
+                      </p>
+                      <p className="text-sm text-gray-400">{member.bio}</p>
+                    </div>
+                  </motion.div>
+                ))}
               </motion.div>
             </LampContainer>
-
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-              {teamMembers.map((member) => (
-                <div
-                  key={member.name}
-                  className="group flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur transition-all duration-300 hover:-translate-y-2 shadow-[0_0_40px_-10px_rgba(56,226,255,0.3)] hover:shadow-[0_0_60px_-5px_rgba(56,226,255,0.5)] hover:border-cyan-400/30 hover:bg-white/10"
-                >
-                  <div className="relative h-32 w-32 overflow-hidden rounded-full border border-white/10 bg-[radial-gradient(circle_at_top,rgba(148,163,184,0.25),rgba(30,41,59,0.85))]">
-                    <div className="absolute inset-0 flex items-center justify-center text-lg font-semibold tracking-[0.35em] text-gray-400">
-                      {member.initials}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-semibold text-white">
-                      {member.name}
-                    </h3>
-                    <p className="text-sm uppercase tracking-[0.35em] text-cyan-200/80">
-                      {member.role}
-                    </p>
-                    <p className="text-sm text-gray-400">{member.bio}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 

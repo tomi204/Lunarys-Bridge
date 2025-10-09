@@ -2,46 +2,51 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+# Welcome to LUNARYS
 
-Let's discover **Docusaurus in less than 5 minutes**.
+**LUNARYS** is an encrypted cross-chain bridge between Solana and Ethereum, powered by [Arcium](https://www.arcium.com/) - the encrypted supercomputer. It enables secure and private asset transfers by computing on encrypted data without ever decrypting it.
+
+## What is LUNARYS?
+
+LUNARYS enables seamless asset transfers between Solana and Ethereum while maintaining complete privacy through:
+
+- **Encrypted Cross-Chain Transfers**: Assets move between chains with end-to-end encryption
+- **Zero-Knowledge Proofs**: Cryptographic verification without revealing transaction details
+- **Arcium Integration**: [Arcium](https://www.arcium.com/) encrypted supercomputer enables computation on encrypted data without decryption
+- **Dual-Chain Architecture**: Native support for both Solana and Ethereum ecosystems
+
+## Key Features
+
+- **Cross-Chain Privacy**: Encrypted transfers between Solana and Ethereum
+- **Zero-Knowledge Security**: Mathematical guarantees of correctness without data exposure
+- **High Performance**: Solana's speed combined with Ethereum's security model
+- **Decentralized**: No central custodians or trusted intermediaries
 
 ## Getting Started
 
-Get started by **creating a new site**.
+To start using LUNARYS bridge:
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+1. **Set up wallets** on both Solana and Ethereum networks
+2. **Fund your accounts** with native tokens (SOL/ETH) and assets to bridge
+3. **Install the LUNARYS SDK** for seamless integration
+4. **Initiate cross-chain transfers** with privacy guarantees
 
-### What you'll need
+## How It Works
 
-- [Node.js](https://nodejs.org/en/download/) version 20.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+LUNARYS bridge operates through a secure multi-step process:
 
-## Generate a new site
+1. **Lock Assets**: Assets are locked on the source chain (Solana or Ethereum)
+2. **Generate Proofs**: Zero-knowledge proofs verify the transfer without revealing details
+3. **Cross-Chain Communication**: Encrypted data is transmitted between chains
+4. **Mint/Release**: Equivalent assets are minted or released on the destination chain
 
-Generate a new Docusaurus site using the **classic template**.
+## Architecture Overview
 
-The classic template will automatically be added to your project after you run the command:
+LUNARYS consists of several key components:
 
-```bash
-npm init docusaurus@latest my-website classic
-```
+- **Smart Contracts**: Anchor programs on Solana and Solidity contracts on Ethereum
+- **Relayer Network**: Off-chain infrastructure managing cross-chain communication
+- **Privacy Layer**: Arcium-powered zero-knowledge computations
+- **Bridge Interfaces**: User-facing applications for cross-chain operations
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+Explore our architecture diagrams to understand the cross-chain bridge flow.

@@ -95,10 +95,10 @@ export default function BridgePage() {
 
   const handleInitiateBridge = () => {
     setIsLoading(true);
-    // Simular carga por 5 segundos
+    // Simular carga por 15 segundos (3x más tiempo)
     setTimeout(() => {
       setIsLoading(false);
-    }, 5000);
+    }, 15000);
   };
 
   const fromDetails = chainOptions.find((chain) => chain.value === fromChain);
@@ -106,8 +106,14 @@ export default function BridgePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
-      {isLoading && <ScannerCardStream />}
-      <ConstellationBackground className="z-0" particleCount={220} maxLineDistance={200} />
+      {isLoading && (
+        <ScannerCardStream fromChain={fromChain} toChain={toChain} />
+      )}
+      <ConstellationBackground
+        className="z-0"
+        particleCount={220}
+        maxLineDistance={200}
+      />
       <div className="absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(56,226,255,0.25),transparent_60%)]" />
       <div className="absolute bottom-[-20%] left-[15%] h-[420px] w-[420px] rounded-full bg-violet-500/25 blur-[140px]" />
       <div className="absolute top-[30%] right-[-5%] h-[460px] w-[460px] rounded-full bg-cyan-500/25 blur-[140px]" />
@@ -123,7 +129,9 @@ export default function BridgePage() {
               className="h-9 w-9 animate-spin-slow"
               priority
             />
-            <span className="text-2xl font-semibold tracking-tight">Lunarys</span>
+            <span className="text-2xl font-semibold tracking-tight">
+              Lunarys
+            </span>
           </Link>
           <nav className="hidden items-center gap-10 rounded-full border border-white/5 bg-white/5 px-6 py-2 backdrop-blur-xl md:flex">
             <Link
@@ -183,7 +191,9 @@ export default function BridgePage() {
                       From
                     </Label>
                     {fromDetails ? (
-                      <span className="text-gray-500">{fromDetails.tagline}</span>
+                      <span className="text-gray-500">
+                        {fromDetails.tagline}
+                      </span>
                     ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -200,13 +210,18 @@ export default function BridgePage() {
                           >
                             <div className="flex flex-col">
                               <span>{chain.label}</span>
-                              <span className="text-xs text-gray-400">{chain.tagline}</span>
+                              <span className="text-xs text-gray-400">
+                                {chain.tagline}
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select value={selectedToken} onValueChange={setSelectedToken}>
+                    <Select
+                      value={selectedToken}
+                      onValueChange={setSelectedToken}
+                    >
                       <SelectTrigger className="w-[120px] border-white/10 bg-white/10 text-base font-semibold text-white">
                         <SelectValue />
                       </SelectTrigger>
@@ -215,7 +230,9 @@ export default function BridgePage() {
                           <SelectItem key={token.value} value={token.value}>
                             <div className="flex flex-col">
                               <span>{token.label}</span>
-                              <span className="text-xs text-gray-400">{token.subtitle}</span>
+                              <span className="text-xs text-gray-400">
+                                {token.subtitle}
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
@@ -277,7 +294,9 @@ export default function BridgePage() {
                           >
                             <div className="flex flex-col">
                               <span>{chain.label}</span>
-                              <span className="text-xs text-gray-400">{chain.tagline}</span>
+                              <span className="text-xs text-gray-400">
+                                {chain.tagline}
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
@@ -296,11 +315,15 @@ export default function BridgePage() {
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-400">
                       <span>Protocol fee</span>
-                      <span>{protocolFee} {selectedToken}</span>
+                      <span>
+                        {protocolFee} {selectedToken}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-400">
                       <span>Network fee</span>
-                      <span>{networkFee} {selectedToken}</span>
+                      <span>
+                        {networkFee} {selectedToken}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -326,7 +349,9 @@ export default function BridgePage() {
                 <span className="text-xs uppercase tracking-[0.35em] text-gray-500">
                   {stat.label}
                 </span>
-                <div className="mt-2 text-2xl font-semibold text-white">{stat.value}</div>
+                <div className="mt-2 text-2xl font-semibold text-white">
+                  {stat.value}
+                </div>
               </div>
             ))}
           </div>
