@@ -1,0 +1,15 @@
+use anchor_lang::prelude::*;
+
+#[event]
+pub struct BridgeDeposit {
+    pub deposit_id: [u8; 32], // key of the comp_account or the hash of the deposit
+    pub amount_commitment: [u8; 32], // optional: [0; 32]
+    pub recipient_hash: [u8; 32], // optional: [0; 32]
+    pub nonce: u128,          // correlation nonce
+    pub ts: u64,              // timestamp on-chain
+}
+
+#[event]
+pub struct AttestationQueued {
+    pub nonce: [u8; 16],
+}
