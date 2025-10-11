@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownUp, ArrowRight } from "lucide-react";
@@ -29,16 +29,8 @@ import { ERC20_ABI } from "@/abi/erc20";
 import { getTokenConfig } from "@/config/tokens";
 
 const chainOptions = [
-  {
-    value: "solana-devnet",
-    label: "Solana Devnet",
-    tagline: "Finality < 1s",
-  },
-  {
-    value: "sepolia",
-    label: "Sepolia",
-    tagline: "Ethereum testnet",
-  },
+  { value: "solana-devnet", label: "Solana Devnet", tagline: "Finality < 1s" },
+  { value: "sepolia", label: "Sepolia", tagline: "Ethereum testnet" },
 ];
 
 const tokenOptions = [
@@ -51,6 +43,11 @@ const quickStats = [
   { label: "ETA", value: "0.58s" },
   { label: "Route", value: "Tier 1" },
 ];
+
+function etherscanTx(hash?: `0x${string}`) {
+  if (!hash) return "#";
+  return `https://sepolia.etherscan.io/tx/${hash}`;
+}
 
 export default function BridgePage() {
   const {
@@ -70,6 +67,7 @@ export default function BridgePage() {
   const [fromChain, setFromChain] = useState("solana-devnet");
   const [toChain, setToChain] = useState("sepolia");
   const [amount, setAmount] = useState("10.00");
+  const [selectedToken, setSelectedToken] = useState("USDC");
   const [selectedToken, setSelectedToken] = useState("USDC");
   const [isLoading, setIsLoading] = useState(false);
   const [destinationAddress, setDestinationAddress] = useState("");
@@ -105,31 +103,53 @@ export default function BridgePage() {
     const value = numericAmount * 0.996;
     return value <= 0
       ? "0.00"
-      : value.toLocaleString("en-US", {
-          maximumFractionDigits: 4,
-          minimumFractionDigits: 2,
-        });
+      : value.toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 });
   }, [numericAmount]);
 
   const protocolFee = useMemo(() => {
     const value = numericAmount * 0.0025;
     return value <= 0
       ? "0.000"
-      : value.toLocaleString("en-US", {
-          maximumFractionDigits: 3,
-          minimumFractionDigits: 3,
-        });
+      : value.toLocaleString("en-US", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
   }, [numericAmount]);
 
   const networkFee = useMemo(() => {
     const value = numericAmount * 0.0004;
     return value <= 0
       ? "0.000"
-      : value.toLocaleString("en-US", {
-          maximumFractionDigits: 3,
-          minimumFractionDigits: 3,
-        });
+      : value.toLocaleString("en-US", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
   }, [numericAmount]);
+
+  const tokenAddress: Address =
+    selectedToken === "USDC" ? (TOKEN_USDC as Address) : (zeroAddress as Address);
+
+  const networkOk = chainId === CHAIN_ID;
+
+  // Minimal token metadata: symbol + decimals
+  useEffect(() => {
+    (async () => {
+      if (!publicClient) return;
+      try {
+        const [sym, dec] = await Promise.all([
+          publicClient.readContract({
+            address: tokenAddress,
+            abi: ERC20_ABI,
+            functionName: "symbol",
+          }) as Promise<string>,
+          publicClient.readContract({
+            address: tokenAddress,
+            abi: ERC20_ABI,
+            functionName: "decimals",
+          }) as Promise<number>,
+        ]);
+        setSymbol(sym ?? selectedToken);
+        setDecimals(Number(dec ?? 6));
+      } catch {
+        setSymbol(selectedToken);
+        setDecimals(6);
+      }
+    })();
+  }, [publicClient, tokenAddress, selectedToken]);
 
   const handleSwapChains = () => {
     if (fromChain === toChain) return;
@@ -258,6 +278,7 @@ export default function BridgePage() {
     } finally {
       setIsLoading(false);
     }
+    }
   };
 
   const fromDetails = chainOptions.find((chain) => chain.value === fromChain);
@@ -279,14 +300,8 @@ export default function BridgePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
-      {isLoading && (
-        <ScannerCardStream fromChain={fromChain} toChain={toChain} />
-      )}
-      <ConstellationBackground
-        className="z-0"
-        particleCount={220}
-        maxLineDistance={200}
-      />
+      {isLoading && <ScannerCardStream fromChain={fromChain} toChain={toChain} />}
+      <ConstellationBackground className="z-0" particleCount={220} maxLineDistance={200} />
       <div className="absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(56,226,255,0.25),transparent_60%)]" />
       <div className="absolute bottom-[-20%] left-[15%] h-[420px] w-[420px] rounded-full bg-violet-500/25 blur-[140px]" />
       <div className="absolute top-[30%] right-[-5%] h-[460px] w-[460px] rounded-full bg-cyan-500/25 blur-[140px]" />
@@ -302,36 +317,24 @@ export default function BridgePage() {
               className="h-9 w-9 animate-spin-slow"
               priority
             />
-            <span className="text-2xl font-semibold tracking-tight">
-              Lunarys
-            </span>
+            <span className="text-2xl font-semibold tracking-tight">Lunarys</span>
           </Link>
+
           <nav className="hidden items-center gap-10 rounded-full border border-white/5 bg-white/5 px-6 py-2 backdrop-blur-xl md:flex">
-            <Link
-              href="/"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
+            <Link href="/" className="text-sm font-medium text-gray-200 transition-colors hover:text-white">
               Home
             </Link>
-            <Link
-              href="/#experience"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
+            <Link href="/#experience" className="text-sm font-medium text-gray-200 transition-colors hover:text-white">
               Features
             </Link>
-            <Link
-              href="/#docs"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
+            <Link href="/#docs" className="text-sm font-medium text-gray-200 transition-colors hover:text-white">
               Docs
             </Link>
-            <Link
-              href="/#team"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
+            <Link href="/#team" className="text-sm font-medium text-gray-200 transition-colors hover:text-white">
               Team
             </Link>
           </nav>
+
           <div className="flex items-center gap-3">
             <Link
               href="/terms"
@@ -356,17 +359,13 @@ export default function BridgePage() {
           <Card className="w-full border-white/10 bg-white/5 shadow-[0_45px_140px_-80px_rgba(56,226,255,0.8)]">
             <CardContent className="space-y-8 p-8">
               <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
+                {/* From */}
                 <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
-                    <Label className="text-xs uppercase tracking-widest text-gray-400">
-                      From
-                    </Label>
-                    {fromDetails ? (
-                      <span className="text-gray-500">
-                        {fromDetails.tagline}
-                      </span>
-                    ) : null}
+                    <Label className="text-xs uppercase tracking-widest text-gray-400">From</Label>
+                    {fromDetails ? <span className="text-gray-500">{fromDetails.tagline}</span> : null}
                   </div>
+
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={fromChain} onValueChange={setFromChain}>
                       <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
@@ -381,9 +380,7 @@ export default function BridgePage() {
                           >
                             <div className="flex flex-col">
                               <span>{chain.label}</span>
-                              <span className="text-xs text-gray-400">
-                                {chain.tagline}
-                              </span>
+                              <span className="text-xs text-gray-400">{chain.tagline}</span>
                             </div>
                           </SelectItem>
                         ))}
@@ -407,15 +404,14 @@ export default function BridgePage() {
                           <SelectItem key={token.value} value={token.value}>
                             <div className="flex flex-col">
                               <span>{token.label}</span>
-                              <span className="text-xs text-gray-400">
-                                {token.subtitle}
-                              </span>
+                              <span className="text-xs text-gray-400">{token.subtitle}</span>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+
                   <Input
                     type="number"
                     value={amount}
@@ -428,18 +424,33 @@ export default function BridgePage() {
                     }}
                     className="border-0 bg-transparent p-0 text-4xl font-semibold text-white focus-visible:ring-0"
                   />
+
+                  {/* Destination is taken from env; keep a read-only indicator */}
+                  <div className="mt-4 space-y-2 text-left">
+                    <Label className="text-xs uppercase tracking-widest text-gray-400">
+                      Solana destination (from env)
+                    </Label>
+                    <Input
+                      value={SOL_DESTINATION_ADDRESS}
+                      readOnly
+                      className="border-white/10 bg-white/10 text-white"
+                    />
+                  </div>
+
                   <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>Balance: 126.84 {selectedToken}</span>
+                    <span>Balance: — {symbol}</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-auto px-3 py-1 text-xs font-semibold text-white hover:bg-white/10"
+                      disabled
                     >
                       Max
                     </Button>
                   </div>
                 </div>
 
+                {/* Swap */}
                 <div className="flex items-center justify-center">
                   <Button
                     onClick={handleSwapChains}
@@ -453,15 +464,13 @@ export default function BridgePage() {
                   </Button>
                 </div>
 
+                {/* To */}
                 <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
-                    <Label className="text-xs uppercase tracking-widest text-gray-400">
-                      To
-                    </Label>
-                    {toDetails ? (
-                      <span className="text-gray-500">{toDetails.tagline}</span>
-                    ) : null}
+                    <Label className="text-xs uppercase tracking-widest text-gray-400">To</Label>
+                    {toDetails ? <span className="text-gray-500">{toDetails.tagline}</span> : null}
                   </div>
+
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={toChain} onValueChange={setToChain}>
                       <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
@@ -476,36 +485,32 @@ export default function BridgePage() {
                           >
                             <div className="flex flex-col">
                               <span>{chain.label}</span>
-                              <span className="text-xs text-gray-400">
-                                {chain.tagline}
-                              </span>
+                              <span className="text-xs text-gray-400">{chain.tagline}</span>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+
                     <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white">
-                      Receive · {selectedToken}
+                      Receive · {symbol}
                     </div>
                   </div>
+
                   <div className="grid gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
                     <div className="flex items-center justify-between">
                       <span>You receive</span>
                       <span className="text-lg font-semibold text-white">
-                        {estimatedReceive} {selectedToken}
+                        {estimatedReceive} {symbol}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-400">
                       <span>Protocol fee</span>
-                      <span>
-                        {protocolFee} {selectedToken}
-                      </span>
+                      <span>{protocolFee} {symbol}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-400">
                       <span>Network fee</span>
-                      <span>
-                        {networkFee} {selectedToken}
-                      </span>
+                      <span>{networkFee} {symbol}</span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -619,9 +624,7 @@ export default function BridgePage() {
                 <span className="text-xs uppercase tracking-[0.35em] text-gray-500">
                   {stat.label}
                 </span>
-                <div className="mt-2 text-2xl font-semibold text-white">
-                  {stat.value}
-                </div>
+                <div className="mt-2 text-2xl font-semibold text-white">{stat.value}</div>
               </div>
             ))}
           </div>
