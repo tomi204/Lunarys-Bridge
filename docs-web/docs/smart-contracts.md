@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_label: "Overview"
 ---
 
 # Cross-Chain Bridge Smart Contracts
@@ -15,19 +15,9 @@ The LUNARYS bridge consists of dual blockchain deployments powered by [Arcium](h
 - **Arcium MXEs**: Multiparty Computation eXecution Environments that compute on encrypted data without decryption
 - **Cross-Chain Privacy**: Arcium enables the bridge to process transfer data while maintaining complete privacy
 
-## Contract Addresses
-
-### Solana Program ID
-
-```
-AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by
-```
-
-### Ethereum Contract Addresses
-
-- **Bridge Contract**: `0x...` (Mainnet)
-- **Token Contracts**: Deployed per bridged asset
-- **Validator Contract**: Multi-signature validation contract
+:::tip Contract Addresses
+For deployed contract addresses, see the [Addresses](./addresses.md) page.
+:::
 
 ## Core Functions
 
