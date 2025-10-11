@@ -5,22 +5,24 @@ import {
   Keypair,
   PublicKey,
   Transaction,
-  TransactionInstruction,
   sendAndConfirmTransaction,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
 import type { Hex } from 'viem';
 import { Submitter } from './types';
-import { encodeCanonical } from 'src/message/canonical';
 import { pinoLogger as logger } from 'src/common/logger';
-
-/** Small helpers */
-function hexToBytes(h: string): Buffer {
-  return Buffer.from(h.startsWith('0x') ? h.slice(2) : h, 'hex');
-}
+import {
+  buildReleaseSplIx,
+  deriveSignPda,
+  pubkeyFromBytes32,
+} from './solana.contracts';
+import {
+  parseTokenMapFromEnv,
+  type TokenMapEntry,
+} from 'src/config/config.schema';
 
 /** Load payer from env:
- *  - SOLANA_PAYER_SECRET can be base58 (common) or a JSON array of numbers.
+ *  - SOLANA_PAYER_SECRET may be a base58 secret string or a JSON array of numbers.
  */
 function loadPayerFromEnv(): Keypair | null {
   const raw = (process.env.SOLANA_PAYER_SECRET || '').trim();
@@ -31,7 +33,6 @@ function loadPayerFromEnv(): Keypair | null {
       const arr = JSON.parse(raw) as number[];
       return Keypair.fromSecretKey(Uint8Array.from(arr));
     }
-    // assume base58 secret string
     const sk = bs58.decode(raw);
     return Keypair.fromSecretKey(sk);
   } catch (e) {
@@ -40,78 +41,101 @@ function loadPayerFromEnv(): Keypair | null {
   }
 }
 
+function findTokenMapping(map: TokenMapEntry[], origin: Hex): Extract<TokenMapEntry, {type: 'spl'}> | null {
+  const hit = map.find(t => t.type === 'spl' && t.origin.toLowerCase() === origin.toLowerCase());
+  return (hit ?? null) as any;
+}
+
+function toU64AmountOrThrow(v: bigint): bigint {
+  // On-chain handler expects u64. Guard here.
+  if (v < 0n || v > 0xFFFF_FFFF_FFFF_FFFFn) {
+    throw new Error(`amount does not fit into u64: ${v.toString()}`);
+  }
+  return v;
+}
+
 /**
- * Sends the attested message to a Solana "executor" program.
- *
- * Returns the transaction signature (base58) if submitted, otherwise null.
- * - Only runs for EVM -> SOL direction (dir = 2).
- * - Requires:
- *    SOLANA_RPC_HTTP = https://... (Helius/QuickNode/etc.)
- *    SOLANA_EXECUTOR_PROGRAM_ID = <program id base58>
- *    SOLANA_PAYER_SECRET = <base58 secret key OR JSON secret array>
- *
- * NOTE: The `keys` and `data` layout MUST match your on-chain program.
- * Below we send a single instruction with data:
- *   [ msgId(32) | payload(bytes) | v(1) | r(32) | s(32) ]
- * Replace `keys` with the actual accounts your program expects.
+ * Solana submitter adapted to your Anchor program:
+ * - Direction 2 (EVM -> SOL) only.
+ * - Builds and sends `release_spl` with the exact accounts your program expects.
+ * - Uses TOKEN_MAP_JSON to resolve which SPL mint/escrow to release from.
  */
 @Injectable()
 export class SolanaSubmitter implements Submitter {
   async submit(input: { msgId: Hex; m: any; sig: { v: number; r: Hex; s: Hex } }): Promise<string | null> {
-    // Only submit to Solana if direction is EVM -> SOL (dir = 2).
+    // Only submit for EVM -> SOL
     if (Number(input.m.dir) !== 2) return null;
 
     const RPC = (process.env.SOLANA_RPC_HTTP || '').trim();
-    const PROGRAM_ID_STR = (process.env.SOLANA_EXECUTOR_PROGRAM_ID || '').trim();
+    const PROGRAM_ID_STR = (process.env.SOLANA_PROGRAM_ID || '').trim();
     const payer = loadPayerFromEnv();
 
-    if (!RPC || !PROGRAM_ID_STR || !payer) {
-      logger.warn(
-        'Solana submit skipped: missing SOLANA_RPC_HTTP / SOLANA_EXECUTOR_PROGRAM_ID / SOLANA_PAYER_SECRET'
-      );
+    // Required runtime config
+    const ARCIUM_PROGRAM_ID_STR = (process.env.ARCIUM_PROGRAM_ID || '').trim();
+    const COMP_DEF_ACCOUNT_STR  = (process.env.SOLANA_COMP_DEF_ACCOUNT || '').trim();
+    const SIGN_PDA_OVERRIDE     = (process.env.SOLANA_SIGN_PDA || '').trim() || undefined;
+
+    const tokenMap = parseTokenMapFromEnv(process.env.TOKEN_MAP_JSON);
+
+    if (!RPC || !PROGRAM_ID_STR || !payer || !ARCIUM_PROGRAM_ID_STR || !COMP_DEF_ACCOUNT_STR || tokenMap.length === 0) {
+      logger.warn('Solana submit skipped: please set SOLANA_RPC_HTTP, SOLANA_PROGRAM_ID, SOLANA_PAYER_SECRET, ARCIUM_PROGRAM_ID, SOLANA_COMP_DEF_ACCOUNT and TOKEN_MAP_JSON.');
       return null;
     }
 
-    const conn = new Connection(RPC, { commitment: 'confirmed' });
-    const programId = new PublicKey(PROGRAM_ID_STR);
+    // Resolve token mapping for this originToken (bytes32)
+    const mapping = findTokenMapping(tokenMap, input.m.originToken as Hex);
+    if (!mapping) {
+      logger.warn({ originToken: input.m.originToken }, 'No SPL mapping found for originToken; skipping');
+      return null;
+    }
 
-    // --- Build instruction data to match your program's interface ---
-    // msgId (bytes32)
-    const msgIdBytes = hexToBytes(input.msgId);
-    // canonical payload as bytes
-    const payloadHex = encodeCanonical(input.m);
-    const payloadBytes = hexToBytes(payloadHex);
-    // attestation (v/r/s)
-    const v = Buffer.from([input.sig.v & 0xff]);
-    const r = hexToBytes(input.sig.r);
-    const s = hexToBytes(input.sig.s);
-    const data = Buffer.concat([msgIdBytes, payloadBytes, v, r, s]);
+    const conn        = new Connection(RPC, { commitment: 'confirmed' });
+    const programId   = new PublicKey(PROGRAM_ID_STR);
+    const arciumId    = new PublicKey(ARCIUM_PROGRAM_ID_STR);
+    const compDefPk   = new PublicKey(COMP_DEF_ACCOUNT_STR);
+    const mintPk      = new PublicKey(mapping.mint);
+    const escrowPk    = new PublicKey(mapping.escrow);
+    const recipientPk = pubkeyFromBytes32(input.m.recipient as Hex);
 
-    // --- Accounts expected by your executor program ---
-    // TODO: Replace with your real accounts (bridge state, vault, recipient, sysvars, etc.)
-    const keys = [
-      // Example placeholders (must be replaced):
-      // { pubkey: new PublicKey('<bridge_state>'), isSigner: false, isWritable: true },
-      // { pubkey: new PublicKey('<vault_account>'), isSigner: false, isWritable: true },
-      // { pubkey: payer.publicKey, isSigner: true, isWritable: false },
-      { pubkey: programId, isSigner: false, isWritable: false }, // placeholder so the IX compiles
-    ];
+    // Resolve Sign PDA (your program uses seed "sign"). If not given, derive it.
+    const signPdaPk = SIGN_PDA_OVERRIDE ? new PublicKey(SIGN_PDA_OVERRIDE)
+                                        : deriveSignPda(programId)[0];
 
-    const ix = new TransactionInstruction({ keys, programId, data });
+    // Amount guard (u64)
+    const amount = toU64AmountOrThrow(BigInt(input.m.amount));
+
+    // Build release_spl ix (program will init ATA if needed)
+    const { ix } = buildReleaseSplIx({
+      programId,
+      payer: payer.publicKey,
+      mint: mintPk,
+      escrowToken: escrowPk,
+      recipient: recipientPk,
+      compDefAccount: compDefPk,
+      arciumProgramId: arciumId,
+      signPda: signPdaPk,
+      amount,
+    });
+
     const tx = new Transaction().add(ix);
     tx.feePayer = payer.publicKey;
 
     logger.info(
-      { programId: PROGRAM_ID_STR, payer: payer.publicKey.toBase58() },
-      'Submitting bridge message to Solana executor'
+      {
+        programId: PROGRAM_ID_STR,
+        payer: payer.publicKey.toBase58(),
+        msgId: input.msgId,
+        mint: mapping.mint,
+        escrow: mapping.escrow,
+      },
+      'Submitting release_spl'
     );
 
-    // Send + confirm. For higher throughput you can sendRawTransaction and confirm later.
     const signature = await sendAndConfirmTransaction(conn, tx, [payer], {
       commitment: 'confirmed',
     });
 
-    logger.info({ signature }, 'Solana executor tx sent');
-    return signature; // base58 signature string
+    logger.info({ signature, msgId: input.msgId }, 'release_spl sent');
+    return signature; // base58 tx signature
   }
 }
