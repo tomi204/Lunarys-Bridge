@@ -130,7 +130,7 @@ A cross-chain bridge relayer contract that enables token transfers between EVM a
 function initiateBridge(
     address token,
     uint256 amount,
-    externalEaddress encryptedSolanaDestination,
+    externalEuint256 encryptedSolanaDestination,
     bytes calldata destinationProof
 ) external returns (uint256 requestId)
 ```

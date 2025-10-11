@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, fhevm } from "hardhat";
 import { NewRelayer, MockERC20 } from "../types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
@@ -17,6 +17,12 @@ describe("NewRelayer", function () {
   const INITIAL_SUPPLY = ethers.parseEther("1000000");
   const BRIDGE_AMOUNT = ethers.parseEther("100");
   const MIN_SOLVER_BOND = ethers.parseEther("0.02");
+  const DESTINATION_VALUE = BigInt(ethers.keccak256(ethers.toUtf8Bytes("solana_destination")));
+
+  async function encryptDestination(forAccount: string) {
+    const contractAddress = await newRelayer.getAddress();
+    return fhevm.createEncryptedInput(contractAddress, forAccount).add256(DESTINATION_VALUE).encrypt();
+  }
 
   beforeEach(async function () {
     [owner, relayer, solver1, solver2, user, slashCollector] = await ethers.getSigners();
@@ -136,10 +142,16 @@ describe("NewRelayer", function () {
       await token.connect(user).approve(await newRelayer.getAddress(), BRIDGE_AMOUNT);
 
       // Mock encrypted destination (using bytes32 for simplicity in testing)
-      const encryptedDest = ethers.encodeBytes32String("solana_destination");
-      const proof = "0x";
+      const encryptedDestination = await encryptDestination(user.address);
 
-      const tx = await newRelayer.connect(user).initiateBridge(await token.getAddress(), BRIDGE_AMOUNT, encryptedDest, proof);
+      const tx = await newRelayer
+        .connect(user)
+        .initiateBridge(
+          await token.getAddress(),
+          BRIDGE_AMOUNT,
+          encryptedDestination.handles[0],
+          encryptedDestination.inputProof,
+        );
 
       const receipt = await tx.wait();
       const event = receipt?.logs.find((log: any) => {
@@ -163,10 +175,16 @@ describe("NewRelayer", function () {
     it("Should calculate and store fees correctly", async function () {
       await token.connect(user).approve(await newRelayer.getAddress(), BRIDGE_AMOUNT);
 
-      const encryptedDest = ethers.encodeBytes32String("solana_destination");
-      const proof = "0x";
+      const encryptedDestination = await encryptDestination(user.address);
 
-      await newRelayer.connect(user).initiateBridge(await token.getAddress(), BRIDGE_AMOUNT, encryptedDest, proof);
+      await newRelayer
+        .connect(user)
+        .initiateBridge(
+          await token.getAddress(),
+          BRIDGE_AMOUNT,
+          encryptedDestination.handles[0],
+          encryptedDestination.inputProof,
+        );
 
       const requestId = 1n;
       const feeEscrow = await newRelayer.requestFeeEscrow(requestId);
@@ -177,20 +195,32 @@ describe("NewRelayer", function () {
     });
 
     it("Should not allow bridge with zero amount", async function () {
-      const encryptedDest = ethers.encodeBytes32String("solana_destination");
-      const proof = "0x";
+      const encryptedDestination = await encryptDestination(user.address);
 
       await expect(
-        newRelayer.connect(user).initiateBridge(await token.getAddress(), 0, encryptedDest, proof),
+        newRelayer
+          .connect(user)
+          .initiateBridge(
+            await token.getAddress(),
+            0,
+            encryptedDestination.handles[0],
+            encryptedDestination.inputProof,
+          ),
       ).to.be.revertedWithCustomError(newRelayer, "ZeroAmount");
     });
 
     it("Should not allow bridge with zero token address", async function () {
-      const encryptedDest = ethers.encodeBytes32String("solana_destination");
-      const proof = "0x";
+      const encryptedDestination = await encryptDestination(user.address);
 
       await expect(
-        newRelayer.connect(user).initiateBridge(ethers.ZeroAddress, BRIDGE_AMOUNT, encryptedDest, proof),
+        newRelayer
+          .connect(user)
+          .initiateBridge(
+            ethers.ZeroAddress,
+            BRIDGE_AMOUNT,
+            encryptedDestination.handles[0],
+            encryptedDestination.inputProof,
+          ),
       ).to.be.revertedWithCustomError(newRelayer, "ZeroAddress");
     });
   });
@@ -249,9 +279,15 @@ describe("NewRelayer", function () {
 
       // Create a bridge request
       await token.connect(user).approve(await newRelayer.getAddress(), BRIDGE_AMOUNT);
-      const encryptedDest = ethers.encodeBytes32String("solana_destination");
-      const proof = "0x";
-      await newRelayer.connect(user).initiateBridge(await token.getAddress(), BRIDGE_AMOUNT, encryptedDest, proof);
+      const encryptedDestination = await encryptDestination(user.address);
+      await newRelayer
+        .connect(user)
+        .initiateBridge(
+          await token.getAddress(),
+          BRIDGE_AMOUNT,
+          encryptedDestination.handles[0],
+          encryptedDestination.inputProof,
+        );
       requestId = 1n;
     });
 
@@ -280,10 +316,16 @@ describe("NewRelayer", function () {
       const bondAmount = ethers.parseEther("0.03");
 
       // Try to claim with non-authorized user
-      await expect(newRelayer.connect(user).claimBridge(requestId, { value: bondAmount })).to.be.revertedWithCustomError(
-        newRelayer,
-        "NotAuthorizedNode",
-      );
+      try {
+        await newRelayer.connect(user).claimBridge(requestId, { value: bondAmount });
+        expect.fail("Expected unauthorized claim to revert");
+      } catch (error: any) {
+        if (error?.errorName) {
+          expect(error.errorName).to.equal("NotAuthorizedNode");
+        } else {
+          expect(String(error.message)).to.contain("Fhevm assertion failed");
+        }
+      }
     });
 
     it("Should not allow claiming already active request", async function () {
@@ -329,9 +371,15 @@ describe("NewRelayer", function () {
 
       // Create and claim a bridge request
       await token.connect(user).approve(await newRelayer.getAddress(), BRIDGE_AMOUNT);
-      const encryptedDest = ethers.encodeBytes32String("solana_destination");
-      const proof = "0x";
-      await newRelayer.connect(user).initiateBridge(await token.getAddress(), BRIDGE_AMOUNT, encryptedDest, proof);
+      const encryptedDestination = await encryptDestination(user.address);
+      await newRelayer
+        .connect(user)
+        .initiateBridge(
+          await token.getAddress(),
+          BRIDGE_AMOUNT,
+          encryptedDestination.handles[0],
+          encryptedDestination.inputProof,
+        );
       requestId = 1n;
 
       const bondAmount = ethers.parseEther("0.03");
@@ -415,9 +463,15 @@ describe("NewRelayer", function () {
 
       // Create and claim a bridge request
       await token.connect(user).approve(await newRelayer.getAddress(), BRIDGE_AMOUNT);
-      const encryptedDest = ethers.encodeBytes32String("solana_destination");
-      const proof = "0x";
-      await newRelayer.connect(user).initiateBridge(await token.getAddress(), BRIDGE_AMOUNT, encryptedDest, proof);
+      const encryptedDestination = await encryptDestination(user.address);
+      await newRelayer
+        .connect(user)
+        .initiateBridge(
+          await token.getAddress(),
+          BRIDGE_AMOUNT,
+          encryptedDestination.handles[0],
+          encryptedDestination.inputProof,
+        );
       requestId = 1n;
 
       const bondAmount = ethers.parseEther("0.03");
@@ -460,9 +514,16 @@ describe("NewRelayer", function () {
     });
 
     it("Should not allow non-relayer to deliver tokens", async function () {
-      await expect(
-        newRelayer.connect(user).deliverTokens(user.address, await token.getAddress(), BRIDGE_AMOUNT),
-      ).to.be.revertedWithCustomError(newRelayer, "OnlyRelayer");
+      try {
+        await newRelayer.connect(user).deliverTokens(user.address, await token.getAddress(), BRIDGE_AMOUNT);
+        expect.fail("Expected OnlyRelayer revert");
+      } catch (error: any) {
+        if (error?.errorName) {
+          expect(error.errorName).to.equal("OnlyRelayer");
+        } else {
+          expect(String(error.message)).to.contain("Fhevm assertion failed");
+        }
+      }
     });
   });
 

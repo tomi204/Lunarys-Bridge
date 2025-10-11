@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {FHE, eaddress, externalEaddress} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, euint256, externalEuint256} from "@fhevm/solidity/lib/FHE.sol";
 import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -59,7 +59,7 @@ contract NewRelayer is SepoliaConfig, Ownable, ReentrancyGuard {
         address sender;
         address token;
         uint256 amount; // net (post-fee) held in escrow
-        eaddress encryptedSolanaDestination;
+        euint256 encryptedSolanaDestination; // FHE-encrypted 32-byte Solana destination
         uint256 timestamp;
         bool finalized;
         uint256 fee; // fee for THIS request
@@ -240,7 +240,7 @@ contract NewRelayer is SepoliaConfig, Ownable, ReentrancyGuard {
     function initiateBridge(
         address token,
         uint256 amount,
-        externalEaddress encryptedSolanaDestination,
+        externalEuint256 encryptedSolanaDestination,
         bytes calldata destinationProof
     ) external nonReentrant returns (uint256 requestId) {
         if (token == address(0)) revert ZeroAddress();
@@ -252,7 +252,7 @@ contract NewRelayer is SepoliaConfig, Ownable, ReentrancyGuard {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         // Create encrypted handle and grant base permissions + relayer (for off-chain verification)
-        eaddress destinationHandle = FHE.fromExternal(encryptedSolanaDestination, destinationProof);
+        euint256 destinationHandle = FHE.fromExternal(encryptedSolanaDestination, destinationProof);
         FHE.allow(destinationHandle, msg.sender);
         FHE.allow(destinationHandle, address(this));
         FHE.allow(destinationHandle, relayer); // <- key: relayer can read destination

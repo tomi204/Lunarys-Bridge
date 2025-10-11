@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownUp, ArrowRight } from "lucide-react";
+import { ethers } from "ethers";
 
 import { ConstellationBackground } from "@/components/constellation-background";
 import { Footer } from "@/components/footer";
@@ -20,6 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScannerCardStream } from "@/components/ui/scanner-card-stream";
+import { useFhevmBridge } from "@/providers/fhevm-bridge-provider";
+import { useSolanaWallet } from "@/hooks/useReownSolanaWallet";
+import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
+import { NEW_RELAYER_ABI } from "@/abi/newRelayer";
+import { ERC20_ABI } from "@/abi/erc20";
+import { getTokenConfig } from "@/config/tokens";
 
 const chainOptions = [
   {
@@ -35,8 +42,8 @@ const chainOptions = [
 ];
 
 const tokenOptions = [
-  { value: "SOL", label: "SOL", subtitle: "Native Solana token" },
-  { value: "USDC", label: "USDC", subtitle: "Dollar stablecoin" },
+  { value: "USDC", label: "USDC", subtitle: "USD Coin (Sepolia)" },
+  { value: "CTKN", label: "CTKN", subtitle: "Demo liquidity token" },
 ];
 
 const quickStats = [
@@ -46,11 +53,48 @@ const quickStats = [
 ];
 
 export default function BridgePage() {
+  const {
+    account,
+    chainId,
+    encryptSolanaDestination,
+    fheStatus,
+    isConnected,
+    isCorrectNetwork,
+    expectedChainId,
+    newRelayerAddress,
+    signer,
+  } = useFhevmBridge();
+  const { address: solanaAccount, isConnected: isSolanaConnected } =
+    useSolanaWallet();
+
   const [fromChain, setFromChain] = useState("solana-devnet");
   const [toChain, setToChain] = useState("sepolia");
   const [amount, setAmount] = useState("10.00");
-  const [selectedToken, setSelectedToken] = useState("SOL");
+  const [selectedToken, setSelectedToken] = useState("USDC");
   const [isLoading, setIsLoading] = useState(false);
+  const [destinationAddress, setDestinationAddress] = useState("");
+  const [encryptionError, setEncryptionError] = useState<string | null>(null);
+  const [encryptedPayload, setEncryptedPayload] = useState<
+    | { handle: string; proof: string; plaintextAsHex: string }
+    | null
+  >(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [txRequestId, setTxRequestId] = useState<string | null>(null);
+  const [approvalHash, setApprovalHash] = useState<string | null>(null);
+
+  const accountLabel = useMemo(() => {
+    if (!account) return "Sin conexión";
+    return `${account.slice(0, 6)}...${account.slice(-4)}`;
+  }, [account]);
+
+  const solanaLabel = useMemo(() => {
+    if (!solanaAccount) return "Sin conexión";
+    return `${solanaAccount.slice(0, 4)}...${solanaAccount.slice(-4)}`;
+  }, [solanaAccount]);
+
+  const activeTokenConfig = useMemo(() => {
+    return getTokenConfig(chainId ?? expectedChainId, selectedToken);
+  }, [chainId, expectedChainId, selectedToken]);
 
   const numericAmount = useMemo(() => {
     const parsed = Number.parseFloat(amount);
@@ -92,17 +136,146 @@ export default function BridgePage() {
     setFromChain(toChain);
     setToChain(fromChain);
   };
+  const isFheReady = fheStatus === "ready";
+  const isBridgeDisabled =
+    isLoading ||
+    !isConnected ||
+    !signer ||
+    !isFheReady ||
+    !isCorrectNetwork ||
+    destinationAddress.trim().length === 0 ||
+    !activeTokenConfig;
 
-  const handleInitiateBridge = () => {
+  const handleInitiateBridge = async () => {
+    if (isBridgeDisabled) return;
+
+    if (!signer) {
+      setEncryptionError("Conecta tu billetera EVM antes de iniciar el bridge");
+      return;
+    }
+
     setIsLoading(true);
-    // Simular carga por 15 segundos (3x más tiempo)
-    setTimeout(() => {
+    setEncryptionError(null);
+    setEncryptedPayload(null);
+    setTxHash(null);
+    setTxRequestId(null);
+    setApprovalHash(null);
+
+    try {
+      const payload = await encryptSolanaDestination(destinationAddress);
+      setEncryptedPayload(payload);
+      const tokenConfig = activeTokenConfig;
+      if (!tokenConfig) {
+        throw new Error(
+          `El token ${selectedToken} no está configurado para esta red`
+        );
+      }
+
+      const sanitizedAmount = amount && amount.trim().length > 0 ? amount : "0";
+      let parsedAmount: bigint;
+      try {
+        parsedAmount = ethers.parseUnits(
+          sanitizedAmount,
+          tokenConfig.decimals
+        );
+      } catch {
+        throw new Error("Cantidad inválida para el token seleccionado");
+      }
+      if (parsedAmount <= 0n) {
+        throw new Error("La cantidad debe ser mayor que cero");
+      }
+
+      if (!newRelayerAddress) {
+        throw new Error("No se encontró la dirección del contrato NewRelayer");
+      }
+
+      if (!account) {
+        throw new Error("No se detectó la cuenta EVM conectada");
+      }
+      const signerInstance = signer as ethers.Signer;
+      const ownerAddress = account as `0x${string}`;
+
+      const handleBytes = payload.handle as `0x${string}`;
+      const destinationProof = payload.proof as `0x${string}`;
+
+      const erc20 = new ethers.Contract(
+        tokenConfig.address,
+        ERC20_ABI,
+        signerInstance
+      );
+      const currentAllowance: bigint = await erc20.allowance(
+        ownerAddress,
+        newRelayerAddress
+      );
+
+      if (currentAllowance < parsedAmount) {
+        const approveTx = await erc20.approve(
+          newRelayerAddress,
+          parsedAmount
+        );
+        const approveReceipt = await approveTx.wait();
+        setApprovalHash(approveReceipt.hash ?? approveTx.hash);
+      }
+
+      const contract = new ethers.Contract(
+        newRelayerAddress,
+        NEW_RELAYER_ABI,
+        signerInstance
+      );
+
+      const tx = await contract.initiateBridge(
+        tokenConfig.address,
+        parsedAmount,
+        handleBytes,
+        destinationProof
+      );
+
+      const receipt = await tx.wait();
+      const iface = new ethers.Interface(NEW_RELAYER_ABI);
+      let requestId: string | null = null;
+      for (const log of receipt.logs ?? []) {
+        try {
+          const parsed = iface.parseLog(log);
+          if (parsed?.name === "BridgeInitiated") {
+            requestId = parsed.args.requestId.toString();
+            break;
+          }
+        } catch {
+          // ignore logs that do not belong to the ABI
+        }
+      }
+
+      setTxHash(receipt.hash ?? tx.hash);
+      if (requestId) {
+        setTxRequestId(requestId);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error desconocido al iniciar el bridge";
+      setEncryptionError(message);
+    } finally {
       setIsLoading(false);
-    }, 15000);
+    }
   };
 
   const fromDetails = chainOptions.find((chain) => chain.value === fromChain);
   const toDetails = chainOptions.find((chain) => chain.value === toChain);
+
+  const fheStatusLabel = useMemo(() => {
+    switch (fheStatus) {
+      case "ready":
+        return "FHE listo";
+      case "loading":
+        return "Inicializando FHE";
+      case "error":
+        return "Error al inicializar FHE";
+      case "idle":
+      default:
+        return "FHE sin inicializar";
+    }
+  }, [fheStatus]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
@@ -166,9 +339,7 @@ export default function BridgePage() {
             >
               Terms
             </Link>
-            <Button className="bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 px-6 py-5 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)]">
-              Connect wallet
-            </Button>
+            <ConnectWalletButton />
           </div>
         </div>
       </header>
@@ -220,7 +391,13 @@ export default function BridgePage() {
                     </Select>
                     <Select
                       value={selectedToken}
-                      onValueChange={setSelectedToken}
+                      onValueChange={(value) => {
+                        setSelectedToken(value);
+                        setEncryptedPayload(null);
+                        setTxHash(null);
+                        setTxRequestId(null);
+                        setApprovalHash(null);
+                      }}
                     >
                       <SelectTrigger className="w-[120px] border-white/10 bg-white/10 text-base font-semibold text-white">
                         <SelectValue />
@@ -243,7 +420,12 @@ export default function BridgePage() {
                     type="number"
                     value={amount}
                     min="0"
-                    onChange={(event) => setAmount(event.target.value)}
+                    onChange={(event) => {
+                      setAmount(event.target.value);
+                      setTxHash(null);
+                      setTxRequestId(null);
+                      setApprovalHash(null);
+                    }}
                     className="border-0 bg-transparent p-0 text-4xl font-semibold text-white focus-visible:ring-0"
                   />
                   <div className="flex items-center justify-between text-xs text-gray-400">
@@ -326,17 +508,105 @@ export default function BridgePage() {
                       </span>
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-widest text-gray-400">
+                      Solana destination address
+                    </Label>
+                    <Input
+                      value={destinationAddress}
+                      onChange={(event) => {
+                        setDestinationAddress(event.target.value);
+                        setEncryptedPayload(null);
+                        setTxHash(null);
+                        setTxRequestId(null);
+                      }}
+                      placeholder="Ej: 4Nd1K..."
+                      className="border-white/10 bg-white/10 text-sm text-white placeholder:text-gray-500"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Esta dirección se encripta con FHE antes de enviarse al contrato NewRelayer.
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <Button
                 onClick={handleInitiateBridge}
-                disabled={isLoading}
+                disabled={isBridgeDisabled}
                 className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? "Processing..." : "Initiate bridge"}
+                {isLoading ? "Encrypting..." : "Initiate bridge"}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
+              <div className="space-y-2 text-left text-sm text-gray-400">
+                <p>
+                  <span className="text-gray-300">Estado FHE:</span>{" "}
+                  <span className="text-white">{fheStatusLabel}</span>
+                </p>
+                <p>
+                  <span className="text-gray-300">Wallet EVM:</span>{" "}
+                  {isConnected ? accountLabel : "Sin conexión"}
+                </p>
+                <p>
+                  <span className="text-gray-300">Wallet Solana:</span>{" "}
+                  {isSolanaConnected ? solanaLabel : "Sin conexión"}
+                </p>
+                <p>
+                  <span className="text-gray-300">Red EVM:</span>{" "}
+                  {isCorrectNetwork
+                    ? `Sepolia (${expectedChainId})`
+                    : `Cambiar a chainId ${expectedChainId}`}
+                </p>
+                <p className="break-words text-xs text-gray-500">
+                  NewRelayer: <span className="font-mono text-gray-300">{newRelayerAddress}</span>
+                </p>
+                {!isConnected && !isSolanaConnected && (
+                  <p className="text-xs text-yellow-300">
+                    Conecta tu wallet para cifrar la dirección destino.
+                  </p>
+                )}
+                {isConnected && !isCorrectNetwork && (
+                  <p className="text-xs text-yellow-300">
+                    Cambia a la red Sepolia ({expectedChainId}) antes de continuar.
+                  </p>
+                )}
+                {encryptionError ? (
+                  <p className="text-sm text-red-400">{encryptionError}</p>
+                ) : null}
+                {encryptedPayload ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-gray-200">
+                    <p className="font-semibold text-white">Payload cifrado listo</p>
+                    <p className="mt-2 break-words font-mono">handle: {encryptedPayload.handle}</p>
+                    <p className="break-words font-mono">proof: {encryptedPayload.proof}</p>
+                    <p className="break-words font-mono text-gray-400">
+                      plaintext (hex): {encryptedPayload.plaintextAsHex}
+                    </p>
+                  </div>
+                ) : null}
+                {approvalHash ? (
+                  <div className="rounded-xl border border-cyan-400/40 bg-cyan-400/10 p-4 text-xs text-cyan-100">
+                    <p className="font-semibold text-cyan-200">
+                      Approval enviado
+                    </p>
+                    <p className="mt-2 break-words font-mono">
+                      tx: {approvalHash.slice(0, 10)}...{approvalHash.slice(-10)}
+                    </p>
+                  </div>
+                ) : null}
+                {txHash ? (
+                  <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-xs text-emerald-100">
+                    <p className="font-semibold text-emerald-200">Bridge enviado</p>
+                    <p className="mt-2 break-words font-mono">
+                      tx: {txHash.slice(0, 10)}...{txHash.slice(-10)}
+                    </p>
+                    {txRequestId ? (
+                      <p className="mt-1 font-mono text-emerald-200/80">
+                        requestId: {txRequestId}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </CardContent>
           </Card>
 

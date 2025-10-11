@@ -13,6 +13,11 @@ describe("Relayer", function () {
 
   const INITIAL_SUPPLY = ethers.parseEther("1000000");
 
+  async function encryptDestination(forAccount: string, destination: string) {
+    const contractAddress = await relayer.getAddress();
+    return fhevm.createEncryptedInput(contractAddress, forAccount).add256(BigInt(destination)).encrypt();
+  }
+
   beforeEach(async function () {
     [owner, relayerAddress, user, recipient] = await ethers.getSigners();
 
@@ -100,10 +105,7 @@ describe("Relayer", function () {
       // Note: In actual usage, user would encrypt the Solana destination address
       // For testing with mock FHE, we use a mock Ethereum address as placeholder
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       const tx = await relayer
         .connect(user)
@@ -129,10 +131,7 @@ describe("Relayer", function () {
 
     it("Should calculate and collect fees correctly", async function () {
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await relayer
         .connect(user)
@@ -149,10 +148,7 @@ describe("Relayer", function () {
 
     it("Should not allow bridge with zero amount", async function () {
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await expect(
         relayer
@@ -168,10 +164,7 @@ describe("Relayer", function () {
 
     it("Should allow relayer to finalize bridge", async function () {
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await relayer
         .connect(user)
@@ -192,10 +185,7 @@ describe("Relayer", function () {
 
     it("Should not allow non-relayer to finalize bridge", async function () {
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await relayer
         .connect(user)
@@ -211,10 +201,7 @@ describe("Relayer", function () {
 
     it("Should not allow finalizing same bridge twice", async function () {
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await relayer
         .connect(user)
@@ -301,10 +288,7 @@ describe("Relayer", function () {
     beforeEach(async function () {
       // Initiate a bridge to collect some fees
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await mockToken.connect(user).approve(await relayer.getAddress(), bridgeAmount);
       await relayer
@@ -379,10 +363,7 @@ describe("Relayer", function () {
     it("Should return bridge nonce", async function () {
       const bridgeAmount = ethers.parseEther("100");
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await mockToken.connect(user).approve(await relayer.getAddress(), bridgeAmount);
       await relayer
@@ -400,10 +381,7 @@ describe("Relayer", function () {
     it("Should return contract balance", async function () {
       const bridgeAmount = ethers.parseEther("100");
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await mockToken.connect(user).approve(await relayer.getAddress(), bridgeAmount);
       await relayer
@@ -425,10 +403,7 @@ describe("Relayer", function () {
 
       const bridgeAmount = ethers.parseEther("100");
       const mockDestination = recipient.address;
-      const encryptedInput = await fhevm
-        .createEncryptedInput(await relayer.getAddress(), user.address)
-        .addAddress(mockDestination);
-      const encryptedDestination = await encryptedInput.encrypt();
+      const encryptedDestination = await encryptDestination(user.address, mockDestination);
 
       await mockToken.connect(user).approve(await relayer.getAddress(), bridgeAmount);
       await relayer

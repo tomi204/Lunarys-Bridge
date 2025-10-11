@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AppKit } from "./reown";
+import { ReownEthersSignerProvider } from "@/hooks/useReownEthersSigner";
+import { SolanaWalletProvider } from "@/hooks/useReownSolanaWallet";
+import { FhevmBridgeProvider } from "@/providers/fhevm-bridge-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,7 +51,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#020617] text-white`}
       >
-        {children}
+        <AppKit>
+          <ReownEthersSignerProvider>
+            <SolanaWalletProvider>
+              <FhevmBridgeProvider>{children}</FhevmBridgeProvider>
+            </SolanaWalletProvider>
+          </ReownEthersSignerProvider>
+        </AppKit>
       </body>
     </html>
   );

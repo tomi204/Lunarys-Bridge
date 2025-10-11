@@ -32,7 +32,7 @@ Initiates a bridge request from Ethereum to Solana with an encrypted destination
 function initiateBridge(
     address token,
     uint256 amount,
-    externalEaddress encryptedSolanaDestination,
+    externalEuint256 encryptedSolanaDestination,
     bytes calldata destinationProof
 ) external nonReentrant returns (uint256 requestId)
 ```
@@ -299,7 +299,7 @@ struct BridgeRequest {
     address sender;
     address token;
     uint256 amount;
-    eaddress encryptedSolanaDestination;
+    euint256 encryptedSolanaDestination;
     uint256 timestamp;
     bool finalized;
     uint256 fee;
@@ -347,7 +347,7 @@ struct BridgeRequest {
     address sender;              // Original requester
     address token;               // Token being bridged
     uint256 amount;              // Amount after fee deduction
-    eaddress encryptedSolanaDestination;  // FHE-encrypted destination
+    euint256 encryptedSolanaDestination;  // FHE-encrypted destination
     uint256 timestamp;           // Request creation time
     bool finalized;              // Whether request is complete
     uint256 fee;                 // Fee for this request
@@ -486,7 +486,7 @@ await tx.wait();
 The contract uses Zama's FHE library for privacy-preserving destination addresses:
 
 ```solidity
-import {FHE, eaddress, externalEaddress} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, euint256, externalEuint256} from "@fhevm/solidity/lib/FHE.sol";
 ```
 
 **Key Features:**

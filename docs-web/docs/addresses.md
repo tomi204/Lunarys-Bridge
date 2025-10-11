@@ -11,7 +11,7 @@ This page contains all the deployed contract addresses for the LUNARYS bridge ac
 | Network | Contract Type | Address | Explorer |
 |---------|--------------|---------|----------|
 | Solana Devnet | Bridge Program | `AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by` | [View on Solana Explorer](https://explorer.solana.com/address/AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by?cluster=devnet) |
-| Ethereum Sepolia | Bridge Contract | `0x0fC588e5EF7cEA7d728a979B6053e49A371587B2` | [View on Etherscan](https://sepolia.etherscan.io/address/0x0fC588e5EF7cEA7d728a979B6053e49A371587B2) |
+| Ethereum Sepolia | NewRelayer Contract | `0x80A4aC24C022cCCe157F59E63EF7A7abf644e515` | [View on Etherscan](https://sepolia.etherscan.io/address/0x80A4aC24C022cCCe157F59E63EF7A7abf644e515) |
 
 ## Network Information
 
@@ -25,7 +25,7 @@ This page contains all the deployed contract addresses for the LUNARYS bridge ac
 
 - **RPC Endpoint**: `https://sepolia.infura.io/v3/YOUR-API-KEY`
 - **Chain ID**: 11155111
-- **Bridge Contract**: `0x0fC588e5EF7cEA7d728a979B6053e49A371587B2`
+- **NewRelayer Contract**: `0x80A4aC24C022cCCe157F59E63EF7A7abf644e515`
 
 ## Mainnet Contracts
 
