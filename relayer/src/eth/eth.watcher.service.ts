@@ -1,3 +1,4 @@
+// src/eth/eth-watcher.service.ts
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -5,36 +6,42 @@ import {
   webSocket,
   parseAbiItem,
   Hex,
-  padHex,
   isAddress,
 } from 'viem';
-import { EnvVars } from 'src/config/config.schema';
-import { RelayerProcessor } from 'src/relayer/relayer.processor';
 import { pinoLogger as logger } from 'src/common/logger';
-import { BridgeMessageSchema } from 'src/config/config.schema';
-import { computeMsgId } from 'src/message/canonical';
 
-const DepositEvent = parseAbiItem(
-  'event Deposit(address indexed token, address indexed from, bytes32 solanaRecipient, uint256 amount, uint256 nonce, uint256 dstChainId)',
+// Exact event signature from your contract:
+// event BridgeInitiated(uint256 indexed requestId, address indexed sender, address token, uint256 amount);
+const BridgeInitiatedEvt = parseAbiItem(
+  'event BridgeInitiated(uint256 indexed requestId, address indexed sender, address token, uint256 amount)'
 );
 
 @Injectable()
 export class EthWatcherService implements OnModuleInit, OnModuleDestroy {
   private unwatch?: () => void;
 
-  constructor(
-    private readonly cfg: ConfigService<EnvVars, true>,
-    private readonly processor: RelayerProcessor,
-  ) {}
+  constructor(private readonly cfg: ConfigService) {}
 
-  onModuleInit() { this.start(); }
-  onModuleDestroy() { this.unwatch?.(); }
+  async onModuleInit() {
+    await this.start();
+  }
+
+  onModuleDestroy() {
+    try { this.unwatch?.(); } catch {}
+  }
 
   private async start() {
-    const ETH_RPC_WSS = this.cfg.get('ETH_RPC_WSS', { infer: true });
-    const ETH_CHAIN_ID = this.cfg.get('ETH_CHAIN_ID', { infer: true });
-    const RAW_LOCKER = (this.cfg.get('ETH_LOCKER_ADDR', { infer: true }) ?? '').trim();
+    // Required env vars:
+    // ETH_RPC_WSS: Sepolia WSS endpoint
+    // ETH_CHAIN_ID: 11155111
+    // RELAYER_ADDR: your deployed Relayer address
+    // ETH_TAIL_BLOCKS: optional, how far back to start to avoid missing logs on restart
+    const ETH_RPC_WSS = this.cfg.get<string>('ETH_RPC_WSS', { infer: true })!;
+    const ETH_CHAIN_ID = Number(this.cfg.get<string>('ETH_CHAIN_ID', { infer: true }) ?? '11155111');
+    const RAW_ADDRESS = (this.cfg.get<string>('ETH_LOCKER_ADDR', { infer: true }) ?? '').trim();
+    const TAIL = Number(this.cfg.get<string>('ETH_TAIL_BLOCKS', { infer: true }) ?? '0');
 
+    // Create a public client over WebSocket
     const client = createPublicClient({
       transport: webSocket(ETH_RPC_WSS),
       chain: {
@@ -45,52 +52,65 @@ export class EthWatcherService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    const address = isAddress(RAW_LOCKER as Hex) ? (RAW_LOCKER as Hex) : undefined;
+    // Optional address filter; if missing/invalid, we subscribe by topic only
+    const address = isAddress(RAW_ADDRESS as Hex) ? (RAW_ADDRESS as Hex) : undefined;
     if (!address) {
-      logger.warn('ETH_LOCKER_ADDR ausente o inválido; suscribiendo por topic del evento (sin address).');
+      logger.warn('RELAYER_ADDR missing/invalid; listening by topic only (no address filter).');
     }
 
+    // Start slightly behind the head to avoid missing logs across restarts
+    let fromBlock: bigint | undefined;
+    try {
+      const latest = await client.getBlockNumber();
+      fromBlock = latest > BigInt(TAIL) ? latest - BigInt(TAIL) : 0n;
+    } catch (e) {
+      logger.warn({ err: (e as Error).message }, 'Could not fetch latest block; defaulting to "latest".');
+    }
+
+    // Subscribe to BridgeInitiated
     this.unwatch = await client.watchEvent({
       address,
-      event: DepositEvent,
-      onLogs: async (logs) => {
-        for (const log of logs) {
-          try {
-            const { token, solanaRecipient, amount, nonce, dstChainId } = log.args as any;
-            const srcTxId = log.transactionHash as Hex;
+      event: BridgeInitiatedEvt,
+      ...(fromBlock ? { fromBlock } : {}),
+      onLogs: (logs) => {
+        for (const { args, transactionHash, blockNumber } of logs) {
+          // Strongly-typed args according to the event
+          const { requestId, sender, token, amount } = args as {
+            requestId: bigint;
+            sender: `0x${string}`;
+            token: `0x${string}`;
+            amount: bigint;
+          };
 
-            const mInput = {
-              version: 1,
-              dir: 2, // EVM -> SOL
-              srcChainId: String(ETH_CHAIN_ID),
-              dstChainId: String(dstChainId),
-              srcTxId,
-              originToken: padHex(token as Hex, { size: 32 }), // address -> bytes32
-              amount: (amount as bigint).toString(),
-              recipient: solanaRecipient as Hex,               // bytes32 en el evento
-              nonce: (nonce as bigint).toString(),
-              expiry: String(Math.floor(Date.now() / 1000) + 3600),
-            };
+          logger.info(
+            {
+              chainId: ETH_CHAIN_ID,
+              blockNumber,
+              txHash: transactionHash,
+              requestId: requestId.toString(),
+              sender,
+              token,
+              amount: amount.toString(),
+            },
+            'BridgeInitiated'
+          );
 
-            const m = BridgeMessageSchema.parse(mInput);
-            const msgId = computeMsgId(m) as Hex;
-
-            await this.processor.handleDecryptedMessage({
-              kv: 1,
-              msgId,
-              m,
-            });
-          } catch (e) {
-            logger.warn(
-              { err: (e as Error).message, tx: log?.transactionHash },
-              'Failed to process EVM log',
-            );
-          }
+          // 👉 Kick off your off-chain flow here:
+          // 1) Read the encrypted destination handle from the contract (if you expose a getter)
+          // 2) Request decryption (fhEVM) using ACL permissions
+          // 3) Execute the Solana leg
+          // 4) Call finalizeBridge(requestId) back on EVM
+          //
+          // await this.processor.handleEvmBridgeInitiated({ requestId, sender, token, amount, txHash: transactionHash });
         }
       },
-      onError: (e) => logger.error({ err: (e as any)?.message ?? e }, 'ETH WS error'),
+      onError: (e) =>
+        logger.error({ err: (e as any)?.message ?? e }, 'ETH WS error (BridgeInitiated)'),
     });
 
-    logger.info('ETH watcher started');
+    logger.info(
+      { chainId: ETH_CHAIN_ID, address: address ?? '(topic only)', fromBlock: String(fromBlock ?? 'latest') },
+      'ETH watcher started (BridgeInitiated only)'
+    );
   }
 }
