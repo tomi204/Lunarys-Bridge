@@ -14,12 +14,53 @@ import type { SidebarsConfig } from "@docusaurus/plugin-content-docs";
  */
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
-    "intro",
-    "smart-contracts",
-    "architecture",
-    "privacy-protocol",
-    "api-reference",
-    "errors",
+    {
+      type: "doc",
+      id: "intro",
+      label: "Introduction",
+    },
+    {
+      type: "category",
+      label: "Smart Contracts",
+      collapsed: false,
+      items: [
+        {
+          type: "doc",
+          id: "smart-contracts",
+          label: "Overview",
+        },
+        {
+          type: "doc",
+          id: "bridge-evm-functions",
+          label: "Bridge EVM Functions",
+        },
+        {
+          type: "doc",
+          id: "addresses",
+          label: "Deployed Addresses",
+        },
+      ],
+    },
+    {
+      type: "doc",
+      id: "architecture",
+      label: "Architecture",
+    },
+    {
+      type: "doc",
+      id: "privacy-protocol",
+      label: "Privacy Protocol",
+    },
+    {
+      type: "doc",
+      id: "api-reference",
+      label: "API Reference",
+    },
+    {
+      type: "doc",
+      id: "errors",
+      label: "Error Codes",
+    },
   ],
 };
 

@@ -99,6 +99,10 @@ const config: Config = {
               to: "/docs/smart-contracts",
             },
             {
+              label: "Contract Addresses",
+              to: "/docs/addresses",
+            },
+            {
               label: "Architecture",
               to: "/docs/architecture",
             },
