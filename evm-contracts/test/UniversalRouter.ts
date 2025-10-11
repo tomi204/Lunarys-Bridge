@@ -65,7 +65,7 @@ describe("UniversalRouter", function () {
 
       const poolInfo = await router.getPool(token0Addr, token1Addr);
       expect(poolInfo.poolAddress).to.equal(poolAddr);
-      expect(poolInfo.poolType).to.equal(2); // V5_PUBLIC = 2
+      expect(poolInfo.poolType).to.equal(0); // V5_PUBLIC = 0 (only enum value)
       expect(poolInfo.active).to.be.true;
     });
 

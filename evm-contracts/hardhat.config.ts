@@ -10,17 +10,8 @@ import { vars } from "hardhat/config";
 import "solidity-coverage";
 
 import "./tasks/accounts";
-import "./tasks/pool.deposit0";
-import "./tasks/pool.deposit1";
-import "./tasks/pool.provide";
-import "./tasks/pool.init";
-import "./tasks/verify.all";
-import "./tasks/pool.seed";
-import "./tasks/rewardspool.stake";
-import "./tasks/rewardspool.unstake";
-import "./tasks/rewardspool.claim";
-import "./tasks/rewardspool.info";
-
+import "./tasks/relayer.bridge";
+import "./tasks/registerRouter";
 const MNEMONIC: string = vars.get("MNEMONIC", "test test test test test test test test test test test junk");
 const INFURA_API_KEY: string = vars.get("INFURA_API_KEY", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
 

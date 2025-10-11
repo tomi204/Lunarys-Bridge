@@ -1,87 +1,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {FHE, euint64, externalEuint64, ebool, externalEbool, eaddress, externalEaddress} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, euint64, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
 import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IERC7984} from "openzeppelin-confidential-contracts/contracts/interfaces/IERC7984.sol";
-
-interface IPrivacyPoolV3 {
-    function swapToken0ForToken1(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address recipient,
-        uint256 deadline
-    ) external returns (euint64 amountOut);
-
-    function swapToken1ForToken0ExactOut(
-        externalEuint64 encryptedAmountIn,
-        uint256 amountOutMin,
-        address recipient,
-        bytes calldata inputProof,
-        uint256 deadline
-    ) external returns (uint256 requestId);
-
-    function provideLiquidityToken0(
-        int24 tickLower,
-        int24 tickUpper,
-        uint256 amount0,
-        address recipient,
-        uint256 deadline
-    ) external returns (uint256 tokenId);
-
-    function provideLiquidityToken1(
-        int24 tickLower,
-        int24 tickUpper,
-        externalEuint64 encryptedAmountIn,
-        uint256 amount1Clear,
-        address recipient,
-        bytes calldata inputProof,
-        uint256 deadline
-    ) external returns (uint256 requestId);
-
-    function token0() external view returns (IERC20);
-    function token1() external view returns (IERC7984);
-}
-
-interface IPrivacyPoolV4 {
-    function initiateConfidentialSwap(
-        externalEuint64 encryptedAmountIn,
-        externalEuint64 encryptedMinAmountOut,
-        externalEbool encryptedZeroForOne,
-        externalEaddress encryptedRecipient,
-        bytes calldata amountProof,
-        bytes calldata minOutProof,
-        bytes calldata directionProof,
-        bytes calldata recipientProof,
-        uint256 deadline
-    ) external returns (uint256 requestId);
-
-    function provideLiquidityToken0(
-        int24 tickLower,
-        int24 tickUpper,
-        externalEuint64 encryptedAmount0,
-        uint256 amount0Clear,
-        address recipient,
-        bytes calldata inputProof,
-        uint256 deadline
-    ) external returns (uint256 requestId);
-
-    function provideLiquidityToken1(
-        int24 tickLower,
-        int24 tickUpper,
-        externalEuint64 encryptedAmountIn,
-        uint256 amount1Clear,
-        address recipient,
-        bytes calldata inputProof,
-        uint256 deadline
-    ) external returns (uint256 requestId);
-
-    function token0() external view returns (IERC7984);
-    function token1() external view returns (IERC7984);
-}
 
 interface IPrivacyPoolV5 {
     function initiatePrivateSwap(
@@ -112,20 +36,19 @@ interface IPrivacyPoolV5 {
     ) external returns (uint256 tokenId);
 
     function token0() external view returns (IERC20);
+
     function token1() external view returns (IERC20);
 }
 
-/// @title UniversalRouter - Multi-pool router for all PrivacyPool versions
-/// @notice Routes swaps and liquidity operations across V3, V4, and V5 pools
-/// @dev Handles approvals, path routing, and multi-hop swaps
+/// @title UniversalRouter - Router for PrivacyPoolV5
+/// @notice Routes swaps and liquidity operations for V5 pools
+/// @dev Handles approvals and path routing for privacy pools
 contract UniversalRouter is SepoliaConfig, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // --- Pool Registry ---
     enum PoolType {
-        V3_HYBRID,      // Public token0 + Confidential token1
-        V4_CONFIDENTIAL, // Both tokens confidential
-        V5_PUBLIC       // Both tokens public, amounts private
+        V5_PUBLIC // Both tokens public, amounts private
     }
 
     struct PoolInfo {
@@ -156,44 +79,6 @@ contract UniversalRouter is SepoliaConfig, ReentrancyGuard {
 
     // ============================= Pool Registry =============================
 
-    /// @notice Register a pool V3 (hybrid)
-    function registerPoolV3(address poolAddress) external {
-        IPrivacyPoolV3 pool = IPrivacyPoolV3(poolAddress);
-        address token0 = address(pool.token0());
-        address token1 = address(pool.token1());
-
-        bytes32 key = _getPoolKey(token0, token1);
-        pools[key] = PoolInfo({
-            poolAddress: poolAddress,
-            poolType: PoolType.V3_HYBRID,
-            token0: token0,
-            token1: token1,
-            active: true
-        });
-        poolKeys.push(key);
-
-        emit PoolRegistered(poolAddress, PoolType.V3_HYBRID, token0, token1);
-    }
-
-    /// @notice Register a pool V4 (fully confidential)
-    function registerPoolV4(address poolAddress) external {
-        IPrivacyPoolV4 pool = IPrivacyPoolV4(poolAddress);
-        address token0 = address(pool.token0());
-        address token1 = address(pool.token1());
-
-        bytes32 key = _getPoolKey(token0, token1);
-        pools[key] = PoolInfo({
-            poolAddress: poolAddress,
-            poolType: PoolType.V4_CONFIDENTIAL,
-            token0: token0,
-            token1: token1,
-            active: true
-        });
-        poolKeys.push(key);
-
-        emit PoolRegistered(poolAddress, PoolType.V4_CONFIDENTIAL, token0, token1);
-    }
-
     /// @notice Register a pool V5 (public with private amounts)
     function registerPoolV5(address poolAddress) external {
         IPrivacyPoolV5 pool = IPrivacyPoolV5(poolAddress);
@@ -220,194 +105,6 @@ contract UniversalRouter is SepoliaConfig, ReentrancyGuard {
         if (pool.poolAddress == address(0)) revert PoolNotFound();
         pool.active = false;
         emit PoolDeactivated(pool.poolAddress);
-    }
-
-    // ============================= V3 Hybrid Pool Operations =============================
-
-    /// @notice Swap on V3 pool: token0 (public) -> token1 (confidential)
-    function swapV3Token0ForToken1(
-        address token0,
-        address token1,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        uint256 deadline
-    ) external nonReentrant returns (euint64 amountOut) {
-        if (block.timestamp > deadline) revert Expired();
-        if (amountIn == 0) revert ZeroAmount();
-
-        PoolInfo memory pool = _getPool(token0, token1);
-        if (pool.poolType != PoolType.V3_HYBRID) revert InvalidPoolType();
-
-        IERC20(token0).safeTransferFrom(msg.sender, address(this), amountIn);
-        IERC20(token0).approve(pool.poolAddress, amountIn);
-
-        IPrivacyPoolV3 poolContract = IPrivacyPoolV3(pool.poolAddress);
-        amountOut = poolContract.swapToken0ForToken1(amountIn, amountOutMin, msg.sender, deadline);
-
-        emit SwapExecuted(msg.sender, pool.poolAddress, true);
-    }
-
-    /// @notice Swap on V3 pool: token1 (confidential) -> token0 (public) - ASYNC
-    function swapV3Token1ForToken0(
-        address token0,
-        address token1,
-        externalEuint64 encryptedAmountIn,
-        uint256 amountOutMin,
-        bytes calldata inputProof,
-        uint256 deadline
-    ) external nonReentrant returns (uint256 requestId) {
-        if (block.timestamp > deadline) revert Expired();
-
-        PoolInfo memory pool = _getPool(token0, token1);
-        if (pool.poolType != PoolType.V3_HYBRID) revert InvalidPoolType();
-
-        IPrivacyPoolV3 poolContract = IPrivacyPoolV3(pool.poolAddress);
-        requestId = poolContract.swapToken1ForToken0ExactOut(
-            encryptedAmountIn,
-            amountOutMin,
-            msg.sender,
-            inputProof,
-            deadline
-        );
-
-        emit SwapExecuted(msg.sender, pool.poolAddress, false);
-    }
-
-    /// @notice Provide liquidity token0 on V3
-    function provideLiquidityV3Token0(
-        address token0,
-        address token1,
-        int24 tickLower,
-        int24 tickUpper,
-        uint256 amount0,
-        uint256 deadline
-    ) external nonReentrant returns (uint256 tokenId) {
-        if (block.timestamp > deadline) revert Expired();
-        if (amount0 == 0) revert ZeroAmount();
-
-        PoolInfo memory pool = _getPool(token0, token1);
-        if (pool.poolType != PoolType.V3_HYBRID) revert InvalidPoolType();
-
-        IERC20(token0).safeTransferFrom(msg.sender, address(this), amount0);
-        IERC20(token0).approve(pool.poolAddress, amount0);
-
-        IPrivacyPoolV3 poolContract = IPrivacyPoolV3(pool.poolAddress);
-        tokenId = poolContract.provideLiquidityToken0(tickLower, tickUpper, amount0, msg.sender, deadline);
-
-        emit LiquidityAdded(msg.sender, pool.poolAddress, tokenId);
-    }
-
-    /// @notice Provide liquidity token1 on V3 - ASYNC
-    function provideLiquidityV3Token1(
-        address token0,
-        address token1,
-        int24 tickLower,
-        int24 tickUpper,
-        externalEuint64 encryptedAmount1,
-        uint256 amount1Clear,
-        bytes calldata inputProof,
-        uint256 deadline
-    ) external nonReentrant returns (uint256 requestId) {
-        if (block.timestamp > deadline) revert Expired();
-        if (amount1Clear == 0) revert ZeroAmount();
-
-        PoolInfo memory pool = _getPool(token0, token1);
-        if (pool.poolType != PoolType.V3_HYBRID) revert InvalidPoolType();
-
-        IPrivacyPoolV3 poolContract = IPrivacyPoolV3(pool.poolAddress);
-        requestId = poolContract.provideLiquidityToken1(
-            tickLower,
-            tickUpper,
-            encryptedAmount1,
-            amount1Clear,
-            msg.sender,
-            inputProof,
-            deadline
-        );
-
-        emit LiquidityAdded(msg.sender, pool.poolAddress, requestId);
-    }
-
-    // ============================= V4 Confidential Pool Operations =============================
-
-    /// @notice Swap on V4 pool (fully confidential) - ASYNC
-    function swapV4Confidential(
-        address token0,
-        address token1,
-        externalEuint64 encryptedAmountIn,
-        externalEuint64 encryptedMinAmountOut,
-        externalEbool encryptedZeroForOne,
-        externalEaddress encryptedRecipient,
-        bytes calldata amountProof,
-        bytes calldata minOutProof,
-        bytes calldata directionProof,
-        bytes calldata recipientProof,
-        uint256 deadline
-    ) external nonReentrant returns (uint256 requestId) {
-        if (block.timestamp > deadline) revert Expired();
-
-        PoolInfo memory pool = _getPool(token0, token1);
-        if (pool.poolType != PoolType.V4_CONFIDENTIAL) revert InvalidPoolType();
-
-        IPrivacyPoolV4 poolContract = IPrivacyPoolV4(pool.poolAddress);
-        requestId = poolContract.initiateConfidentialSwap(
-            encryptedAmountIn,
-            encryptedMinAmountOut,
-            encryptedZeroForOne,
-            encryptedRecipient,
-            amountProof,
-            minOutProof,
-            directionProof,
-            recipientProof,
-            deadline
-        );
-
-        emit SwapExecuted(msg.sender, pool.poolAddress, true);
-    }
-
-    /// @notice Provide liquidity on V4 pool - ASYNC
-    function provideLiquidityV4(
-        address token0,
-        address token1,
-        bool isToken0,
-        int24 tickLower,
-        int24 tickUpper,
-        externalEuint64 encryptedAmount,
-        uint256 amountClear,
-        bytes calldata inputProof,
-        uint256 deadline
-    ) external nonReentrant returns (uint256 requestId) {
-        if (block.timestamp > deadline) revert Expired();
-        if (amountClear == 0) revert ZeroAmount();
-
-        PoolInfo memory pool = _getPool(token0, token1);
-        if (pool.poolType != PoolType.V4_CONFIDENTIAL) revert InvalidPoolType();
-
-        IPrivacyPoolV4 poolContract = IPrivacyPoolV4(pool.poolAddress);
-
-        if (isToken0) {
-            requestId = poolContract.provideLiquidityToken0(
-                tickLower,
-                tickUpper,
-                encryptedAmount,
-                amountClear,
-                msg.sender,
-                inputProof,
-                deadline
-            );
-        } else {
-            requestId = poolContract.provideLiquidityToken1(
-                tickLower,
-                tickUpper,
-                encryptedAmount,
-                amountClear,
-                msg.sender,
-                inputProof,
-                deadline
-            );
-        }
-
-        emit LiquidityAdded(msg.sender, pool.poolAddress, requestId);
     }
 
     // ============================= V5 Public Pool Operations =============================

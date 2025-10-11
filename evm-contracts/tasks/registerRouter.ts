@@ -5,7 +5,7 @@ import type { TaskArguments } from "hardhat/types";
 
 task("router:register", "Register a pool in UniversalRouter")
   .addParam("pool", "Pool address")
-  .addParam("version", "Pool version: v3, v4, or v5")
+  .addParam("poolversion", "Pool version: v3, v4, or v5")
   .addOptionalParam("router", "Router address (default: deployments/UniversalRouter)")
   .setAction(async (args: TaskArguments, hre) => {
     const { ethers, deployments } = hre;
@@ -15,18 +15,9 @@ task("router:register", "Register a pool in UniversalRouter")
 
     const router = await ethers.getContractAt("UniversalRouter", routerAddr, signer);
 
-    console.log(`📝 Registering pool ${args.pool} as ${args.version}`);
+    console.log(`📝 Registering pool ${args.pool} as ${args.poolversion}`);
 
-    let tx;
-    if (args.version === "v3") {
-      tx = await router.registerPoolV3(args.pool);
-    } else if (args.version === "v4") {
-      tx = await router.registerPoolV4(args.pool);
-    } else if (args.version === "v5") {
-      tx = await router.registerPoolV5(args.pool);
-    } else {
-      throw new Error("Invalid version. Must be v3, v4, or v5");
-    }
+    let tx = await router.registerPoolV5(args.pool);
 
     console.log(`⏳ tx: ${tx.hash}`);
     const rc = await tx.wait();
@@ -58,7 +49,7 @@ task("router:pools", "List all registered pools in UniversalRouter")
       const pool = pools[i];
       const typeNames = ["V3_HYBRID", "V4_CONFIDENTIAL", "V5_PUBLIC"];
       console.log(`[${i + 1}] Pool: ${pool.poolAddress}`);
-      console.log(`    Type: ${typeNames[pool.poolType]}`);
+      // console.log(`    Type: ${typeNames[pool.poolType]}`);
       console.log(`    Token0: ${pool.token0}`);
       console.log(`    Token1: ${pool.token1}`);
       console.log(`    Active: ${pool.active}`);
@@ -94,10 +85,6 @@ task("router:swapV3:0to1", "Swap token0->token1 via UniversalRouter on V3 pool")
 
     // Swap via router
     console.log(`➡️  swapV3Token0ForToken1(...)`);
-    const tx = await router.swapV3Token0ForToken1(args.token0, args.token1, amountIn, minOut, deadline);
-    console.log(`⏳ tx: ${tx.hash}`);
-    const rc = await tx.wait();
-    console.log(`✅ status=${rc?.status} gas=${rc?.gasUsed}`);
   });
 
 task("router:swapV5:public", "Public swap via UniversalRouter on V5 pool")
