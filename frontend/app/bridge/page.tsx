@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownUp, ArrowRight } from "lucide-react";
@@ -29,8 +29,16 @@ import { ERC20_ABI } from "@/abi/erc20";
 import { getTokenConfig } from "@/config/tokens";
 
 const chainOptions = [
-  { value: "solana-devnet", label: "Solana Devnet", tagline: "Finality < 1s" },
-  { value: "sepolia", label: "Sepolia", tagline: "Ethereum testnet" },
+  {
+    value: "solana-devnet",
+    label: "Solana Devnet",
+    tagline: "Finality < 1s",
+  },
+  {
+    value: "sepolia",
+    label: "Sepolia",
+    tagline: "Ethereum testnet",
+  },
 ];
 
 const tokenOptions = [
@@ -43,11 +51,6 @@ const quickStats = [
   { label: "ETA", value: "0.58s" },
   { label: "Route", value: "Tier 1" },
 ];
-
-function etherscanTx(hash?: `0x${string}`) {
-  if (!hash) return "#";
-  return `https://sepolia.etherscan.io/tx/${hash}`;
-}
 
 export default function BridgePage() {
   const {
@@ -68,14 +71,14 @@ export default function BridgePage() {
   const [toChain, setToChain] = useState("sepolia");
   const [amount, setAmount] = useState("10.00");
   const [selectedToken, setSelectedToken] = useState("USDC");
-  const [selectedToken, setSelectedToken] = useState("USDC");
   const [isLoading, setIsLoading] = useState(false);
   const [destinationAddress, setDestinationAddress] = useState("");
   const [encryptionError, setEncryptionError] = useState<string | null>(null);
-  const [encryptedPayload, setEncryptedPayload] = useState<
-    | { handle: string; proof: string; plaintextAsHex: string }
-    | null
-  >(null);
+  const [encryptedPayload, setEncryptedPayload] = useState<{
+    handle: string;
+    proof: string;
+    plaintextAsHex: string;
+  } | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [txRequestId, setTxRequestId] = useState<string | null>(null);
   const [approvalHash, setApprovalHash] = useState<string | null>(null);
@@ -103,53 +106,31 @@ export default function BridgePage() {
     const value = numericAmount * 0.996;
     return value <= 0
       ? "0.00"
-      : value.toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 });
+      : value.toLocaleString("en-US", {
+          maximumFractionDigits: 4,
+          minimumFractionDigits: 2,
+        });
   }, [numericAmount]);
 
   const protocolFee = useMemo(() => {
     const value = numericAmount * 0.0025;
     return value <= 0
       ? "0.000"
-      : value.toLocaleString("en-US", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
+      : value.toLocaleString("en-US", {
+          maximumFractionDigits: 3,
+          minimumFractionDigits: 3,
+        });
   }, [numericAmount]);
 
   const networkFee = useMemo(() => {
     const value = numericAmount * 0.0004;
     return value <= 0
       ? "0.000"
-      : value.toLocaleString("en-US", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
+      : value.toLocaleString("en-US", {
+          maximumFractionDigits: 3,
+          minimumFractionDigits: 3,
+        });
   }, [numericAmount]);
-
-  const tokenAddress: Address =
-    selectedToken === "USDC" ? (TOKEN_USDC as Address) : (zeroAddress as Address);
-
-  const networkOk = chainId === CHAIN_ID;
-
-  // Minimal token metadata: symbol + decimals
-  useEffect(() => {
-    (async () => {
-      if (!publicClient) return;
-      try {
-        const [sym, dec] = await Promise.all([
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: "symbol",
-          }) as Promise<string>,
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: ERC20_ABI,
-            functionName: "decimals",
-          }) as Promise<number>,
-        ]);
-        setSymbol(sym ?? selectedToken);
-        setDecimals(Number(dec ?? 6));
-      } catch {
-        setSymbol(selectedToken);
-        setDecimals(6);
-      }
-    })();
-  }, [publicClient, tokenAddress, selectedToken]);
 
   const handleSwapChains = () => {
     if (fromChain === toChain) return;
@@ -194,10 +175,7 @@ export default function BridgePage() {
       const sanitizedAmount = amount && amount.trim().length > 0 ? amount : "0";
       let parsedAmount: bigint;
       try {
-        parsedAmount = ethers.parseUnits(
-          sanitizedAmount,
-          tokenConfig.decimals
-        );
+        parsedAmount = ethers.parseUnits(sanitizedAmount, tokenConfig.decimals);
       } catch {
         throw new Error("Cantidad inválida para el token seleccionado");
       }
@@ -229,10 +207,7 @@ export default function BridgePage() {
       );
 
       if (currentAllowance < parsedAmount) {
-        const approveTx = await erc20.approve(
-          newRelayerAddress,
-          parsedAmount
-        );
+        const approveTx = await erc20.approve(newRelayerAddress, parsedAmount);
         const approveReceipt = await approveTx.wait();
         setApprovalHash(approveReceipt.hash ?? approveTx.hash);
       }
@@ -278,7 +253,6 @@ export default function BridgePage() {
     } finally {
       setIsLoading(false);
     }
-    }
   };
 
   const fromDetails = chainOptions.find((chain) => chain.value === fromChain);
@@ -300,8 +274,14 @@ export default function BridgePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
-      {isLoading && <ScannerCardStream fromChain={fromChain} toChain={toChain} />}
-      <ConstellationBackground className="z-0" particleCount={220} maxLineDistance={200} />
+      {isLoading && (
+        <ScannerCardStream fromChain={fromChain} toChain={toChain} />
+      )}
+      <ConstellationBackground
+        className="z-0"
+        particleCount={220}
+        maxLineDistance={200}
+      />
       <div className="absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(56,226,255,0.25),transparent_60%)]" />
       <div className="absolute bottom-[-20%] left-[15%] h-[420px] w-[420px] rounded-full bg-violet-500/25 blur-[140px]" />
       <div className="absolute top-[30%] right-[-5%] h-[460px] w-[460px] rounded-full bg-cyan-500/25 blur-[140px]" />
@@ -317,24 +297,36 @@ export default function BridgePage() {
               className="h-9 w-9 animate-spin-slow"
               priority
             />
-            <span className="text-2xl font-semibold tracking-tight">Lunarys</span>
+            <span className="text-2xl font-semibold tracking-tight">
+              Lunarys
+            </span>
           </Link>
-
           <nav className="hidden items-center gap-10 rounded-full border border-white/5 bg-white/5 px-6 py-2 backdrop-blur-xl md:flex">
-            <Link href="/" className="text-sm font-medium text-gray-200 transition-colors hover:text-white">
+            <Link
+              href="/"
+              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
+            >
               Home
             </Link>
-            <Link href="/#experience" className="text-sm font-medium text-gray-200 transition-colors hover:text-white">
+            <Link
+              href="/#experience"
+              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
+            >
               Features
             </Link>
-            <Link href="/#docs" className="text-sm font-medium text-gray-200 transition-colors hover:text-white">
+            <Link
+              href="/#docs"
+              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
+            >
               Docs
             </Link>
-            <Link href="/#team" className="text-sm font-medium text-gray-200 transition-colors hover:text-white">
+            <Link
+              href="/#team"
+              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
+            >
               Team
             </Link>
           </nav>
-
           <div className="flex items-center gap-3">
             <Link
               href="/terms"
@@ -359,13 +351,17 @@ export default function BridgePage() {
           <Card className="w-full border-white/10 bg-white/5 shadow-[0_45px_140px_-80px_rgba(56,226,255,0.8)]">
             <CardContent className="space-y-8 p-8">
               <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
-                {/* From */}
                 <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
-                    <Label className="text-xs uppercase tracking-widest text-gray-400">From</Label>
-                    {fromDetails ? <span className="text-gray-500">{fromDetails.tagline}</span> : null}
+                    <Label className="text-xs uppercase tracking-widest text-gray-400">
+                      From
+                    </Label>
+                    {fromDetails ? (
+                      <span className="text-gray-500">
+                        {fromDetails.tagline}
+                      </span>
+                    ) : null}
                   </div>
-
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={fromChain} onValueChange={setFromChain}>
                       <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
@@ -380,7 +376,9 @@ export default function BridgePage() {
                           >
                             <div className="flex flex-col">
                               <span>{chain.label}</span>
-                              <span className="text-xs text-gray-400">{chain.tagline}</span>
+                              <span className="text-xs text-gray-400">
+                                {chain.tagline}
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
@@ -404,14 +402,15 @@ export default function BridgePage() {
                           <SelectItem key={token.value} value={token.value}>
                             <div className="flex flex-col">
                               <span>{token.label}</span>
-                              <span className="text-xs text-gray-400">{token.subtitle}</span>
+                              <span className="text-xs text-gray-400">
+                                {token.subtitle}
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-
                   <Input
                     type="number"
                     value={amount}
@@ -424,33 +423,18 @@ export default function BridgePage() {
                     }}
                     className="border-0 bg-transparent p-0 text-4xl font-semibold text-white focus-visible:ring-0"
                   />
-
-                  {/* Destination is taken from env; keep a read-only indicator */}
-                  <div className="mt-4 space-y-2 text-left">
-                    <Label className="text-xs uppercase tracking-widest text-gray-400">
-                      Solana destination (from env)
-                    </Label>
-                    <Input
-                      value={SOL_DESTINATION_ADDRESS}
-                      readOnly
-                      className="border-white/10 bg-white/10 text-white"
-                    />
-                  </div>
-
                   <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>Balance: — {symbol}</span>
+                    <span>Balance: 126.84 {selectedToken}</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-auto px-3 py-1 text-xs font-semibold text-white hover:bg-white/10"
-                      disabled
                     >
                       Max
                     </Button>
                   </div>
                 </div>
 
-                {/* Swap */}
                 <div className="flex items-center justify-center">
                   <Button
                     onClick={handleSwapChains}
@@ -464,13 +448,15 @@ export default function BridgePage() {
                   </Button>
                 </div>
 
-                {/* To */}
                 <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
-                    <Label className="text-xs uppercase tracking-widest text-gray-400">To</Label>
-                    {toDetails ? <span className="text-gray-500">{toDetails.tagline}</span> : null}
+                    <Label className="text-xs uppercase tracking-widest text-gray-400">
+                      To
+                    </Label>
+                    {toDetails ? (
+                      <span className="text-gray-500">{toDetails.tagline}</span>
+                    ) : null}
                   </div>
-
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={toChain} onValueChange={setToChain}>
                       <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
@@ -485,32 +471,36 @@ export default function BridgePage() {
                           >
                             <div className="flex flex-col">
                               <span>{chain.label}</span>
-                              <span className="text-xs text-gray-400">{chain.tagline}</span>
+                              <span className="text-xs text-gray-400">
+                                {chain.tagline}
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-
                     <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white">
-                      Receive · {symbol}
+                      Receive · {selectedToken}
                     </div>
                   </div>
-
                   <div className="grid gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
                     <div className="flex items-center justify-between">
                       <span>You receive</span>
                       <span className="text-lg font-semibold text-white">
-                        {estimatedReceive} {symbol}
+                        {estimatedReceive} {selectedToken}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-400">
                       <span>Protocol fee</span>
-                      <span>{protocolFee} {symbol}</span>
+                      <span>
+                        {protocolFee} {selectedToken}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-400">
                       <span>Network fee</span>
-                      <span>{networkFee} {symbol}</span>
+                      <span>
+                        {networkFee} {selectedToken}
+                      </span>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -529,7 +519,8 @@ export default function BridgePage() {
                       className="border-white/10 bg-white/10 text-sm text-white placeholder:text-gray-500"
                     />
                     <p className="text-xs text-gray-500">
-                      Esta dirección se encripta con FHE antes de enviarse al contrato NewRelayer.
+                      Esta dirección se encripta con FHE antes de enviarse al
+                      contrato NewRelayer.
                     </p>
                   </div>
                 </div>
@@ -563,7 +554,10 @@ export default function BridgePage() {
                     : `Cambiar a chainId ${expectedChainId}`}
                 </p>
                 <p className="break-words text-xs text-gray-500">
-                  NewRelayer: <span className="font-mono text-gray-300">{newRelayerAddress}</span>
+                  NewRelayer:{" "}
+                  <span className="font-mono text-gray-300">
+                    {newRelayerAddress}
+                  </span>
                 </p>
                 {!isConnected && !isSolanaConnected && (
                   <p className="text-xs text-yellow-300">
@@ -572,7 +566,8 @@ export default function BridgePage() {
                 )}
                 {isConnected && !isCorrectNetwork && (
                   <p className="text-xs text-yellow-300">
-                    Cambia a la red Sepolia ({expectedChainId}) antes de continuar.
+                    Cambia a la red Sepolia ({expectedChainId}) antes de
+                    continuar.
                   </p>
                 )}
                 {encryptionError ? (
@@ -580,9 +575,15 @@ export default function BridgePage() {
                 ) : null}
                 {encryptedPayload ? (
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-gray-200">
-                    <p className="font-semibold text-white">Payload cifrado listo</p>
-                    <p className="mt-2 break-words font-mono">handle: {encryptedPayload.handle}</p>
-                    <p className="break-words font-mono">proof: {encryptedPayload.proof}</p>
+                    <p className="font-semibold text-white">
+                      Payload cifrado listo
+                    </p>
+                    <p className="mt-2 break-words font-mono">
+                      handle: {encryptedPayload.handle}
+                    </p>
+                    <p className="break-words font-mono">
+                      proof: {encryptedPayload.proof}
+                    </p>
                     <p className="break-words font-mono text-gray-400">
                       plaintext (hex): {encryptedPayload.plaintextAsHex}
                     </p>
@@ -594,13 +595,16 @@ export default function BridgePage() {
                       Approval enviado
                     </p>
                     <p className="mt-2 break-words font-mono">
-                      tx: {approvalHash.slice(0, 10)}...{approvalHash.slice(-10)}
+                      tx: {approvalHash.slice(0, 10)}...
+                      {approvalHash.slice(-10)}
                     </p>
                   </div>
                 ) : null}
                 {txHash ? (
                   <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 p-4 text-xs text-emerald-100">
-                    <p className="font-semibold text-emerald-200">Bridge enviado</p>
+                    <p className="font-semibold text-emerald-200">
+                      Bridge enviado
+                    </p>
                     <p className="mt-2 break-words font-mono">
                       tx: {txHash.slice(0, 10)}...{txHash.slice(-10)}
                     </p>
@@ -624,7 +628,9 @@ export default function BridgePage() {
                 <span className="text-xs uppercase tracking-[0.35em] text-gray-500">
                   {stat.label}
                 </span>
-                <div className="mt-2 text-2xl font-semibold text-white">{stat.value}</div>
+                <div className="mt-2 text-2xl font-semibold text-white">
+                  {stat.value}
+                </div>
               </div>
             ))}
           </div>
