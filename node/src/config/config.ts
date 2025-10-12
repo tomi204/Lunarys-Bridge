@@ -6,7 +6,9 @@ dotenv.config();
 export function getConfig(): NodeConfig {
   const config: NodeConfig = {
     // Ethereum configuration
-    ethereumRpcUrl: process.env.ETHEREUM_RPC_URL || "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
+    ethereumRpcUrl:
+      process.env.ETHEREUM_RPC_URL ||
+      "https://sepolia.infura.io/v3/YOUR_INFURA_KEY",
     newRelayerAddress: process.env.NEW_RELAYER_ADDRESS || "",
     ethereumPrivateKey: process.env.ETHEREUM_PRIVATE_KEY || "",
 
@@ -20,7 +22,8 @@ export function getConfig(): NodeConfig {
 
     // FHE configuration
     fhevmChainId: parseInt(process.env.FHEVM_CHAIN_ID || "11155111"), // Sepolia chain ID
-    fhevmGatewayUrl: process.env.FHEVM_GATEWAY_URL || "https://gateway.sepolia.zama.ai",
+    fhevmGatewayUrl:
+      process.env.FHEVM_GATEWAY_URL || "https://gateway.sepolia.zama.ai",
   };
 
   // Validate required configuration

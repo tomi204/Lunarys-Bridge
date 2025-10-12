@@ -3,8 +3,13 @@ import { EthereumMonitor } from "./services/ethereumMonitor";
 import { SolanaTransferService } from "./services/solanaTransfer";
 import { RelayerApiClient } from "./services/relayerApi";
 import { FHEDecryptor } from "./utils/fheDecryption";
-import { BridgeRequest, ClaimResult } from "./types";
+import { BridgeRequest } from "./types";
 import { ethers } from "ethers";
+import {
+  getSolanaTokenAddress,
+  isNativeToken,
+  getTokenMapping,
+} from "./config/tokenMapping";
 
 class BridgeNode {
   private config = getConfig();
@@ -55,7 +60,9 @@ class BridgeNode {
     const apiHealthy = await this.relayerApi.healthCheck();
     if (!apiHealthy) {
       console.warn("⚠ WARNING: Relayer API is not responding");
-      console.warn("The node will continue, but verification submissions may fail\n");
+      console.warn(
+        "The node will continue, but verification submissions may fail\n"
+      );
     }
 
     console.log("✓ All services initialized successfully!\n");
@@ -73,9 +80,11 @@ class BridgeNode {
     console.log("Listening for bridge requests...\n");
 
     // Start monitoring for bridge events
-    await this.ethereumMonitor.startMonitoring(async (request: BridgeRequest) => {
-      await this.processBridgeRequest(request);
-    });
+    await this.ethereumMonitor.startMonitoring(
+      async (request: BridgeRequest) => {
+        await this.processBridgeRequest(request);
+      }
+    );
 
     // Keep the process alive
     process.on("SIGINT", () => {
@@ -99,7 +108,9 @@ class BridgeNode {
 
     // Prevent duplicate processing
     if (this.processing.has(requestIdStr)) {
-      console.log(`Request ${requestIdStr} is already being processed, skipping...`);
+      console.log(
+        `Request ${requestIdStr} is already being processed, skipping...`
+      );
       return;
     }
 
@@ -109,15 +120,21 @@ class BridgeNode {
       console.log(`\n>>> Processing bridge request ${requestIdStr}...`);
 
       // Step 1: Check if already claimed
-      const isClaimed = await this.ethereumMonitor.isRequestClaimed(request.requestId);
+      const isClaimed = await this.ethereumMonitor.isRequestClaimed(
+        request.requestId
+      );
       if (isClaimed) {
-        console.log(`Request ${requestIdStr} has already been claimed by another node`);
+        console.log(
+          `Request ${requestIdStr} has already been claimed by another node`
+        );
         return;
       }
 
       // Step 2: Claim the bridge request
       console.log(`\n[1/4] Claiming bridge request on Ethereum...`);
-      const claimTxHash = await this.ethereumMonitor.claimBridgeRequest(request.requestId);
+      const claimTxHash = await this.ethereumMonitor.claimBridgeRequest(
+        request.requestId
+      );
 
       // Step 3: Decrypt the Solana destination address
       console.log(`\n[2/4] Decrypting Solana destination address...`);
@@ -135,49 +152,86 @@ class BridgeNode {
       } catch (error) {
         console.error("FHE decryption error:", error);
         console.log("\n⚠ FHE decryption is not fully implemented yet");
-        console.log("For testing, you can manually set the destination address");
-        console.log("In production, ensure the NewRelayer contract has getEncryptedDestination() function\n");
+        console.log(
+          "For testing, you can manually set the destination address"
+        );
+        console.log(
+          "In production, ensure the NewRelayer contract has getEncryptedDestination() function\n"
+        );
 
         // For now, we'll skip the actual transfer
-        throw new Error("FHE decryption not available - cannot proceed with transfer");
+        throw new Error(
+          "FHE decryption not available - cannot proceed with transfer"
+        );
       }
 
       // Step 4: Transfer tokens to Solana
       console.log(`\n[3/4] Transferring tokens on Solana...`);
+      console.log(`Token address (EVM): ${request.token}`);
 
-      // Determine if it's SOL or SPL token
-      // For simplicity, assume native transfers for now
-      // In production, you'd need to map ERC20 addresses to SPL token mints
-      const transferResult = await this.solanaTransfer.transferSOL(
-        solanaDestination,
-        request.amount // Note: May need conversion depending on decimals
-      );
+      let transferResult;
+
+      // Check if it's a native token (ETH → SOL) or ERC20 → SPL
+      if (isNativeToken(request.token)) {
+        console.log("Detected native token transfer (ETH → SOL)");
+        transferResult = await this.solanaTransfer.transferSOL(
+          solanaDestination,
+          request.amount
+        );
+      } else {
+        // Get the Solana SPL token address
+        const solanaTokenAddress = getSolanaTokenAddress(
+          request.token,
+          this.config.fhevmChainId
+        );
+
+        if (!solanaTokenAddress) {
+          throw new Error(
+            `No Solana token mapping found for EVM token ${request.token}. ` +
+            `Please add the mapping in config/tokenMapping.ts`
+          );
+        }
+
+        const tokenInfo = getTokenMapping(request.token, this.config.fhevmChainId);
+        console.log(`Detected SPL token transfer: ${tokenInfo?.name || 'Unknown'}`);
+        console.log(`Solana token mint: ${solanaTokenAddress}`);
+
+        // Handle decimal conversion if needed
+        let amountToTransfer = request.amount;
+        if (tokenInfo && tokenInfo.decimals.evm !== tokenInfo.decimals.solana) {
+          console.log(
+            `Converting decimals: ${tokenInfo.decimals.evm} (EVM) → ${tokenInfo.decimals.solana} (Solana)`
+          );
+          const decimalDiff = tokenInfo.decimals.solana - tokenInfo.decimals.evm;
+          if (decimalDiff > 0) {
+            amountToTransfer = request.amount * BigInt(10 ** decimalDiff);
+          } else {
+            amountToTransfer = request.amount / BigInt(10 ** Math.abs(decimalDiff));
+          }
+          console.log(`Amount adjusted: ${request.amount} → ${amountToTransfer}`);
+        }
+
+        transferResult = await this.solanaTransfer.transferSPLToken(
+          solanaTokenAddress,
+          solanaDestination,
+          amountToTransfer
+        );
+      }
 
       if (!transferResult.success) {
         throw new Error(`Solana transfer failed: ${transferResult.error}`);
       }
 
-      // Step 5: Submit verification to relayer API
-      console.log(`\n[4/4] Submitting verification to relayer API...`);
-      const verificationResult = await this.relayerApi.submitVerification({
-        requestId: requestIdStr,
-        ethClaimTxHash: claimTxHash,
-        solanaTransferSignature: transferResult.signature,
-        solanaDestination: solanaDestination,
-        amount: request.amount.toString(),
-        token: request.token,
-      });
-
-      if (verificationResult.success) {
-        console.log(`\n✓✓✓ Bridge request ${requestIdStr} processed successfully! ✓✓✓`);
-        console.log(`Ethereum claim: ${claimTxHash}`);
-        console.log(`Solana transfer: ${transferResult.signature}`);
-      } else {
-        console.warn(`\n⚠ Verification submission failed: ${verificationResult.message}`);
-        console.warn("The transfer was completed, but the relayer was not notified");
-      }
+      console.log(
+        `\n✓✓✓ Bridge request ${requestIdStr} processed successfully! ✓✓✓`
+      );
+      console.log(`Ethereum claim: ${claimTxHash}`);
+      console.log(`Solana transfer: ${transferResult.signature}`);
     } catch (error) {
-      console.error(`\n✗ Error processing bridge request ${requestIdStr}:`, error);
+      console.error(
+        `\n✗ Error processing bridge request ${requestIdStr}:`,
+        error
+      );
 
       if (error instanceof Error) {
         console.error(`Error message: ${error.message}`);

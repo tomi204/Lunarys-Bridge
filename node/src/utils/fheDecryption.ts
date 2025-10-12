@@ -1,6 +1,8 @@
-import { createInstance, FhevmInstance } from "fhevmjs";
+import { createInstance } from "fhevmjs/node";
+import type { FhevmInstance } from "fhevmjs/node";
 import { ethers } from "ethers";
 import { NodeConfig } from "../types";
+import bs58 from "bs58";
 
 export class FHEDecryptor {
   private fhevmInstance: FhevmInstance | null = null;
@@ -18,22 +20,30 @@ export class FHEDecryptor {
    * Initialize the FHE instance for decryption
    */
   async initialize(): Promise<void> {
-    console.log("Initializing FHE instance...");
+    console.log("Initializing FHE instance for fhevmjs...");
 
-    this.fhevmInstance = await createInstance({
-      chainId: this.config.fhevmChainId,
-      networkUrl: this.config.ethereumRpcUrl,
-      gatewayUrl: this.config.fhevmGatewayUrl,
-    });
+    try {
+      this.fhevmInstance = await createInstance({
+        chainId: this.config.fhevmChainId,
+        networkUrl: this.config.ethereumRpcUrl,
+        gatewayUrl: this.config.fhevmGatewayUrl,
+      });
 
-    console.log("FHE instance initialized successfully");
+      console.log("✓ FHE instance initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize FHE instance:", error);
+      console.log("\n⚠️  FHE decryption will not be available");
+      console.log("The node can still run but will skip decryption step");
+      console.log("For testing, you can set a hardcoded destination address\n");
+      // Don't throw - allow the node to continue without FHE
+    }
   }
 
   /**
    * Decrypt an encrypted Solana address from the NewRelayer contract
    * @param requestId The bridge request ID
    * @param newRelayerAddress The NewRelayer contract address
-   * @returns The decrypted Solana address as a string
+   * @returns The decrypted Solana address as a string (base58)
    */
   async decryptSolanaAddress(requestId: bigint, newRelayerAddress: string): Promise<string> {
     if (!this.fhevmInstance) {
@@ -43,56 +53,63 @@ export class FHEDecryptor {
     try {
       console.log(`Decrypting Solana address for request ID: ${requestId}`);
 
-      // Get the encrypted handle from the contract
-      // The contract stores the encrypted address, we need to request decryption
-      const { publicKey, privateKey } = this.fhevmInstance.generateKeypair();
-
-      // Create EIP-712 signature for decryption permission
-      const eip712 = this.fhevmInstance.createEIP712(publicKey, newRelayerAddress);
-      const signature = await this.wallet.signTypedData(
-        eip712.domain,
-        { Reencrypt: eip712.types.Reencrypt },
-        eip712.message
-      );
-
-      // Get the encrypted handle from the contract's storage
-      // In the NewRelayer contract, the encryptedSolanaDestination is stored in the BridgeRequest struct
+      // ABI for NewRelayer contract with the correct struct definition
       const newRelayerAbi = [
-        "function bridgeRequests(uint256) view returns (address sender, address token, uint256 amount, uint256 timestamp, address claimer, uint256 claimExpiry, bool verified, bool settled)",
+        "function bridgeRequests(uint256) view returns (address sender, address token, uint256 amount, tuple(uint256, bytes) encryptedSolanaDestination, uint256 timestamp, bool finalized, uint256 fee)",
       ];
 
       const newRelayer = new ethers.Contract(newRelayerAddress, newRelayerAbi, this.provider);
 
-      // Note: We need to get the encrypted handle separately as it's not in the main struct
-      // This would typically be done through a view function that returns the encrypted data
-      // For now, we'll use a placeholder approach - in production, add a getter function to the contract
+      // Get the bridge request from the contract
+      console.log("Fetching bridge request from contract...");
+      const bridgeRequest = await newRelayer.bridgeRequests(requestId);
 
-      console.log("Note: Encrypted address decryption requires contract support for FHE reencryption");
-      console.log(
-        "The NewRelayer contract needs a view function to return the encrypted Solana destination"
+      // Extract the encrypted handle (euint256)
+      // The encryptedSolanaDestination is a tuple(uint256, bytes) where the first element is the handle
+      const encryptedHandle = bridgeRequest.encryptedSolanaDestination[0];
+
+      console.log(`Encrypted handle obtained: ${encryptedHandle}`);
+
+      // Create EIP-712 for decryption request
+      // Using the Relayer SDK's decrypt functionality
+      const startTimestamp = Math.floor(Date.now() / 1000);
+      const durationDays = 1; // 1 day validity for decryption signature
+
+      const eip712 = this.fhevmInstance.createEIP712(
+        this.wallet.address, // public key (user address in this case)
+        [newRelayerAddress], // contract addresses
+        startTimestamp,
+        durationDays
       );
 
-      // Placeholder for actual decryption
-      // In a real implementation, you would:
-      // 1. Call a view function on NewRelayer that returns the encrypted handle
-      // 2. Use fhevmInstance.reencrypt() to decrypt it
-      // 3. Parse the result as a Solana address
-
-      // Example of what the actual decryption would look like:
-      // const encryptedHandle = await newRelayer.getEncryptedDestination(requestId);
-      // const decryptedValue = await this.fhevmInstance.reencrypt(
-      //   encryptedHandle,
-      //   privateKey,
-      //   publicKey,
-      //   signature,
-      //   newRelayerAddress,
-      //   this.wallet.address
-      // );
-      // return this.parseAddressFromDecrypted(decryptedValue);
-
-      throw new Error(
-        "FHE decryption not fully implemented. NewRelayer contract needs getEncryptedDestination(uint256) view function."
+      console.log("Signing decryption request...");
+      const signature = await this.wallet.signTypedData(
+        eip712.domain,
+        { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
+        eip712.message
       );
+
+      // Request decryption from the relayer
+      console.log("Requesting decryption from Zama Gateway...");
+      const decryptionResults = await this.fhevmInstance.decrypt([
+        {
+          handle: encryptedHandle,
+          contractAddress: newRelayerAddress,
+        }
+      ], signature);
+
+      if (!decryptionResults || decryptionResults.length === 0) {
+        throw new Error("Decryption failed: No results returned");
+      }
+
+      const decryptedValue = decryptionResults[0];
+      console.log(`Decrypted value (uint256): ${decryptedValue}`);
+
+      // Convert the decrypted uint256 to a Solana address (base58)
+      const solanaAddress = this.uint256ToSolanaAddress(BigInt(decryptedValue));
+      console.log(`Converted to Solana address: ${solanaAddress}`);
+
+      return solanaAddress;
     } catch (error) {
       console.error("Error decrypting Solana address:", error);
       throw error;
@@ -100,28 +117,34 @@ export class FHEDecryptor {
   }
 
   /**
-   * Parse a decrypted value into a Solana address string
-   * Solana addresses are base58-encoded 32-byte public keys
+   * Convert a uint256 (bigint) to a Solana address (base58)
+   * In the frontend, the Solana address was converted from base58 to uint256 before encryption
+   * Now we need to reverse that process
    */
-  private parseAddressFromDecrypted(decryptedValue: bigint): string {
-    // Convert the decrypted bigint to a Solana address
-    // This is a simplified version - actual implementation depends on how the address is encoded
-    const addressBytes = this.bigIntToBytes32(decryptedValue);
+  private uint256ToSolanaAddress(value: bigint): string {
+    // Convert the uint256 to 32 bytes (Solana public key size)
+    const addressBytes = this.bigIntToBytes32(value);
 
-    // Convert bytes to base58 for Solana address format
-    // Note: You'll need to install bs58 package for this
-    // import bs58 from "bs58";
-    // return bs58.encode(addressBytes);
+    // Encode the 32 bytes to base58 (Solana address format)
+    const base58Address = bs58.encode(addressBytes);
 
-    // For now, return hex representation (not a valid Solana address)
-    return ethers.hexlify(addressBytes);
+    return base58Address;
   }
 
   /**
-   * Convert a bigint to 32 bytes
+   * Convert a bigint to 32 bytes (Uint8Array)
+   * Solana addresses are 32-byte public keys
    */
   private bigIntToBytes32(value: bigint): Uint8Array {
+    // Convert bigint to hex string with 64 characters (32 bytes)
     const hex = value.toString(16).padStart(64, "0");
-    return ethers.getBytes("0x" + hex);
+
+    // Convert hex string to Uint8Array
+    const bytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) {
+      bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+
+    return bytes;
   }
 }

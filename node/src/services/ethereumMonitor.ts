@@ -10,9 +10,10 @@ export class EthereumMonitor {
 
   // NewRelayer contract ABI for event listening
   private readonly newRelayerAbi = [
-    "event BridgeInitiated(uint256 indexed requestId, address indexed sender, address token, uint256 amount, bytes32 encryptedSolanaDestination)",
-    "event BridgeClaimed(uint256 indexed requestId, address indexed claimer, uint256 bondAmount, uint256 claimExpiry)",
-    "function bridgeRequests(uint256) view returns (address sender, address token, uint256 amount, uint256 timestamp, address claimer, uint256 claimExpiry, bool verified, bool settled)",
+    "event BridgeInitiated(uint256 indexed requestId, address indexed sender, address token, uint256 amountAfterFee)",
+    "event BridgeClaimed(uint256 indexed requestId, address indexed solver, uint256 bond, uint64 deadline)",
+    "function bridgeRequests(uint256) view returns (address sender, address token, uint256 amount, tuple(uint256, bytes) encryptedSolanaDestination, uint256 timestamp, bool finalized, uint256 fee)",
+    "function requestClaim(uint256) view returns (address solver, uint64 claimedAt, uint64 deadline, uint256 bond)",
     "function claimBridge(uint256 requestId) payable",
     "function authorizedNodes(address) view returns (bool)",
   ];
@@ -21,7 +22,11 @@ export class EthereumMonitor {
     this.config = config;
     this.provider = new ethers.JsonRpcProvider(config.ethereumRpcUrl);
     this.wallet = new ethers.Wallet(config.ethereumPrivateKey, this.provider);
-    this.newRelayer = new ethers.Contract(config.newRelayerAddress, this.newRelayerAbi, this.wallet);
+    this.newRelayer = new ethers.Contract(
+      config.newRelayerAddress,
+      this.newRelayerAbi,
+      this.wallet
+    );
   }
 
   /**
@@ -29,15 +34,23 @@ export class EthereumMonitor {
    */
   async initialize(): Promise<void> {
     this.lastProcessedBlock = await this.provider.getBlockNumber();
-    console.log(`Ethereum monitor initialized at block: ${this.lastProcessedBlock}`);
+    console.log(
+      `Ethereum monitor initialized at block: ${this.lastProcessedBlock}`
+    );
 
     // Check if this node is authorized
-    const isAuthorized = await this.newRelayer.authorizedNodes(this.wallet.address);
+    const isAuthorized = await this.newRelayer.authorizedNodes(
+      this.wallet.address
+    );
     if (!isAuthorized) {
-      console.warn(`WARNING: Node address ${this.wallet.address} is not authorized!`);
+      console.warn(
+        `WARNING: Node address ${this.wallet.address} is not authorized!`
+      );
       console.warn("Contact the contract owner to authorize this node.");
     } else {
-      console.log(`Node ${this.wallet.address} is authorized to claim bridge requests`);
+      console.log(
+        `Node ${this.wallet.address} is authorized to claim bridge requests`
+      );
     }
   }
 
@@ -45,13 +58,22 @@ export class EthereumMonitor {
    * Start monitoring for new BridgeInitiated events
    * @param onBridgeInitiated Callback function when a new bridge request is detected
    */
-  async startMonitoring(onBridgeInitiated: (request: BridgeRequest) => Promise<void>): Promise<void> {
+  async startMonitoring(
+    onBridgeInitiated: (request: BridgeRequest) => Promise<void>
+  ): Promise<void> {
     console.log("Starting Ethereum event monitoring...");
 
     // Listen for new BridgeInitiated events
     this.newRelayer.on(
       "BridgeInitiated",
-      async (requestId: bigint, sender: string, token: string, amount: bigint, encryptedDestination: string, event: ethers.Log) => {
+      async (
+        requestId: bigint,
+        sender: string,
+        token: string,
+        amount: bigint,
+        encryptedDestination: string,
+        event: ethers.Log
+      ) => {
         console.log("\n=================================");
         console.log("New Bridge Request Detected!");
         console.log("=================================");
@@ -59,8 +81,12 @@ export class EthereumMonitor {
         console.log(`Sender: ${sender}`);
         console.log(`Token: ${token}`);
         console.log(`Amount: ${ethers.formatEther(amount)} tokens`);
-        console.log(`Block: ${event.blockNumber}`);
-        console.log(`Tx Hash: ${event.transactionHash}`);
+        if (event?.blockNumber) {
+          console.log(`Block: ${event.blockNumber}`);
+        }
+        if (event?.transactionHash) {
+          console.log(`Tx Hash: ${event.transactionHash}`);
+        }
         console.log("=================================\n");
 
         // Get full bridge request details
@@ -82,31 +108,41 @@ export class EthereumMonitor {
       }
     );
 
-    console.log(`Monitoring NewRelayer contract at: ${this.config.newRelayerAddress}`);
+    console.log(
+      `Monitoring NewRelayer contract at: ${this.config.newRelayerAddress}`
+    );
     console.log(`Node address: ${this.wallet.address}\n`);
   }
 
   /**
    * Poll for historical events (optional, for catching up on missed events)
    */
-  async pollForEvents(fromBlock: number, toBlock: number): Promise<BridgeRequest[]> {
+  async pollForEvents(
+    fromBlock: number,
+    toBlock: number
+  ): Promise<BridgeRequest[]> {
     console.log(`Polling for events from block ${fromBlock} to ${toBlock}...`);
 
     const filter = this.newRelayer.filters.BridgeInitiated();
-    const events = await this.newRelayer.queryFilter(filter, fromBlock, toBlock);
+    const events = await this.newRelayer.queryFilter(
+      filter,
+      fromBlock,
+      toBlock
+    );
 
     const requests: BridgeRequest[] = [];
 
     for (const event of events) {
-      const args = event.args;
-      if (args) {
+      // Type assertion for ethers v6 EventLog
+      if ("args" in event && event.args) {
         const request: BridgeRequest = {
-          requestId: args.requestId,
-          sender: args.sender,
-          token: args.token,
-          amount: args.amount,
+          requestId: event.args.requestId,
+          sender: event.args.sender,
+          token: event.args.token,
+          amount: event.args.amount,
           timestamp: BigInt(Date.now()),
-          encryptedSolanaDestination: args.encryptedSolanaDestination || "0x",
+          encryptedSolanaDestination:
+            event.args.encryptedSolanaDestination || "0x",
         };
         requests.push(request);
       }
@@ -120,8 +156,13 @@ export class EthereumMonitor {
    * Check if a request has already been claimed
    */
   async isRequestClaimed(requestId: bigint): Promise<boolean> {
-    const request = await this.newRelayer.bridgeRequests(requestId);
-    return request.claimer !== ethers.ZeroAddress;
+    const claim = await this.newRelayer.requestClaim(requestId);
+    // Check if there's an active claim (solver != address(0) and not expired)
+    if (claim.solver !== ethers.ZeroAddress) {
+      const now = Math.floor(Date.now() / 1000);
+      return now < Number(claim.deadline); // Still active if before deadline
+    }
+    return false;
   }
 
   /**

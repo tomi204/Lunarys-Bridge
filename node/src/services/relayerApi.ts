@@ -21,7 +21,8 @@ export class RelayerApiClient {
 
   constructor(apiBaseUrl?: string) {
     // TODO: Set the actual relayer API URL when available
-    this.apiBaseUrl = apiBaseUrl || process.env.RELAYER_API_URL || "http://localhost:3000/api";
+    this.apiBaseUrl =
+      apiBaseUrl || process.env.RELAYER_API_URL || "http://localhost:3000/api";
 
     this.client = axios.create({
       baseURL: this.apiBaseUrl,
@@ -39,7 +40,9 @@ export class RelayerApiClient {
    * This is called after successfully transferring tokens on Solana
    * @param request The verification request data
    */
-  async submitVerification(request: VerificationRequest): Promise<VerificationResponse> {
+  async submitVerification(
+    request: VerificationRequest
+  ): Promise<VerificationResponse> {
     try {
       console.log("\n=================================");
       console.log("Submitting Verification to Relayer API");
@@ -49,7 +52,10 @@ export class RelayerApiClient {
       console.log(`Solana Signature: ${request.solanaTransferSignature}`);
       console.log("=================================\n");
 
-      const response = await this.client.post<VerificationResponse>("/verify-bridge", request);
+      const response = await this.client.post<VerificationResponse>(
+        "/verify-bridge",
+        request
+      );
 
       if (response.data.success) {
         console.log(`✓ Verification submitted successfully!`);
