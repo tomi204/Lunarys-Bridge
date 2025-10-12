@@ -15,6 +15,7 @@ pub mod constants;
 pub mod errors;
 pub mod events;
 pub mod instructions;
+pub mod state;
 
 // Re-export handlers & Contexts so entrypoints can delegate cleanly
 pub use instructions::{
@@ -23,6 +24,7 @@ pub use instructions::{
     deposit_sol_and_queue_handler,
     // init / queue / callback
     init_plan_payout_comp_def_handler,
+    init_request_handler,
     plan_payout_callback_handler,
     queue_plan_payout_handler,
     release_sol_handler,
@@ -32,6 +34,7 @@ pub use instructions::{
     DepositAndQueue,
     DepositSolAndQueue,
     InitPlanPayoutCompDef,
+    InitRequest,
     PlanPayoutCallback,
     QueuePlanPayout,
     ReleaseSol,
