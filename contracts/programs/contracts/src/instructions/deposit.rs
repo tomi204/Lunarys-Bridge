@@ -1,20 +1,22 @@
-use crate::events::BridgeDeposit;
-use crate::{
-    constants::COMP_DEF_OFFSET_PLAN_PAYOUT, errors::ErrorCode, SignerAccount, ID, ID_CONST,
-};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self as token, Mint, Token, TokenAccount, TransferChecked};
 use arcium_anchor::prelude::*;
+use core::mem::size_of;
+
+use crate::errors::ErrorCode;
+use crate::events::BridgeDeposit;
+use crate::state::{BridgeConfig, BridgeRequest};
+use crate::{constants::COMP_DEF_OFFSET_PLAN_PAYOUT, SignerAccount, ID, ID_CONST};
 
 #[queue_computation_accounts("plan_payout", payer)]
 #[derive(Accounts)]
-#[instruction(computation_offset: u64)]
+#[instruction(computation_offset: u64, request_id: u64)]
 pub struct DepositAndQueue<'info> {
     // --- Signer/payer ---
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    // --- Classic SLP (USDC/USDT) ---
+    // --- Classic SPL (USDC/USDT) ---
     #[account(
         mut,
         constraint = user_token.mint == mint.key() @ ErrorCode::InvalidMint,
@@ -31,6 +33,20 @@ pub struct DepositAndQueue<'info> {
     pub escrow_token: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
+
+    // --- Config global (fees/ventanas/bond) ---
+    #[account(seeds=[b"config"], bump = config.bump)]
+    pub config: Account<'info, BridgeConfig>,
+
+    // --- PDA del request (patrón B: se crea aquí) ---
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + size_of::<BridgeRequest>(),
+        seeds = [b"request", payer.key().as_ref(), &request_id.to_le_bytes()],
+        bump
+    )]
+    pub request_pda: Account<'info, BridgeRequest>,
 
     // --- Arcium ---
     #[account(
@@ -78,21 +94,31 @@ pub struct DepositAndQueue<'info> {
 pub fn handler(
     ctx: Context<DepositAndQueue>,
     computation_offset: u64,
-
-    // Encrypted amount, Encrypted recipient_tag
+    request_id: u64,
+    // Encrypted amount / recipient_tag
     amount_ct: [u8; 32],
     recipient_tag_ct: [u8; 32],
     pub_key: [u8; 32],
     nonce: u128,
-
-    // Public metadata optional
+    // Public Metadata
     amount_commitment: [u8; 32],
     recipient_hash: [u8; 32],
-
-    // Visible amount (without confidentiality)
+    // Total amount to lock (neto + fee)
     amount: u64,
 ) -> Result<()> {
-    // 1) Lock SPL en escrow
+    // 0) Calculate fee and neto
+    let cfg = &ctx.accounts.config;
+    let mut fee = (amount as u128 * cfg.fee_bps as u128) / 10_000;
+    if fee < cfg.min_fee as u128 {
+        fee = cfg.min_fee as u128;
+    }
+    if fee > cfg.max_fee as u128 {
+        fee = cfg.max_fee as u128;
+    }
+    let fee_u64 = u64::try_from(fee).unwrap_or(u64::MAX);
+    let amount_net = amount.saturating_sub(fee_u64);
+
+    // 1) Lock SPL **TOTAL** (neto + fee) in the escrow
     token::transfer_checked(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -103,11 +129,28 @@ pub fn handler(
                 authority: ctx.accounts.payer.to_account_info(),
             },
         ),
-        amount,
+        amount, // More (neto+fee) to the escrow
         ctx.accounts.mint.decimals,
     )?;
 
-    // 2 Minimum public event
+    // 2) Initialize the BridgeRequest PDA
+    let req = &mut ctx.accounts.request_pda;
+    req.payer = ctx.accounts.payer.key();
+    req.token_mint = ctx.accounts.mint.key();
+    req.amount_locked = amount_net;
+    req.fee_locked = fee_u64;
+    req.created_at = Clock::get()?.unix_timestamp;
+    req.claimed = false;
+    req.solver = Pubkey::default();
+    req.claim_deadline = 0;
+    req.bond_lamports = 0;
+    req.finalized = false;
+    req.bump = ctx.bumps.request_pda;
+
+    // Explicit use of request_id to avoid warnings
+    msg!("bridge request_id = {}", request_id);
+
+    // 3) Minimum public event (parity with deposit_sol)
     emit!(BridgeDeposit {
         deposit_id: ctx.accounts.computation_account.key().to_bytes(),
         amount_commitment,
@@ -116,7 +159,7 @@ pub fn handler(
         ts: Clock::get()?.unix_timestamp as u64,
     });
 
-    // 3 Queue confidential computation
+    // 4) Queue confidential computation
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
     let args = vec![
