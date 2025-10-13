@@ -10,4 +10,6 @@ pub enum ErrorCode {
     InvalidMint,
     #[msg("Invalid token owner")]
     InvalidOwner,
+    #[msg("Only owner can modify config")]
+    OnlyOwner,
 }
