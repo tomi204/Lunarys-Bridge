@@ -1,4 +1,6 @@
 pub mod callback;
+pub mod config_init;
+pub mod config_set;
 pub mod deposit;
 pub mod deposit_sol;
 pub mod init;
@@ -8,6 +10,8 @@ pub mod release_sol;
 pub mod release_spl;
 
 pub use callback::{handler as plan_payout_callback_handler, PlanPayoutCallback};
+pub use config_init::{handler as init_config_handler, InitConfig};
+pub use config_set::{handler as set_config_handler, SetConfig};
 pub use deposit::{handler as deposit_and_queue_handler, DepositAndQueue};
 pub use deposit_sol::{handler as deposit_sol_and_queue_handler, DepositSolAndQueue};
 pub use init::{handler as init_plan_payout_comp_def_handler, InitPlanPayoutCompDef};
