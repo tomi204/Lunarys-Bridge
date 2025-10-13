@@ -123,6 +123,7 @@ pub mod contracts {
     pub fn deposit_sol_and_queue(
         ctx: Context<DepositSolAndQueue>,
         computation_offset: u64,
+        request_id: u64,
         amount_ct: [u8; 32],
         recipient_tag_ct: [u8; 32],
         pub_key: [u8; 32],
@@ -134,6 +135,7 @@ pub mod contracts {
         deposit_sol_and_queue_handler(
             ctx,
             computation_offset,
+            request_id,
             amount_ct,
             recipient_tag_ct,
             pub_key,
@@ -143,7 +145,6 @@ pub mod contracts {
             lamports,
         )
     }
-
     // ---- Releases (unlock) ----
     // SPL tokens: amount explícito (puedes usar “todo” si tu handler lo decide)
     pub fn release_spl(ctx: Context<ReleaseSpl>, amount: u64) -> Result<()> {
