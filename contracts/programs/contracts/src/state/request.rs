@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct BridgeRequest {
+    pub request_id: u64,
     pub payer: Pubkey,
     pub token_mint: Pubkey,
     pub amount_locked: u64,
