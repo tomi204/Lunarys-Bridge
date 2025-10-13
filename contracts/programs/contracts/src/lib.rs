@@ -29,7 +29,7 @@ pub use instructions::{
     plan_payout_callback_handler,
     queue_plan_payout_handler,
     release_sol_handler,
-    // releases (NEW)
+    // releases
     release_spl_handler,
     set_config_handler,
     // Context types
@@ -97,6 +97,7 @@ pub mod contracts {
     pub fn deposit_and_queue(
         ctx: Context<DepositAndQueue>,
         computation_offset: u64,
+        request_id: u64, // 👈 añade
         amount_ct: [u8; 32],
         recipient_tag_ct: [u8; 32],
         pub_key: [u8; 32],
@@ -108,6 +109,7 @@ pub mod contracts {
         deposit_and_queue_handler(
             ctx,
             computation_offset,
+            request_id,
             amount_ct,
             recipient_tag_ct,
             pub_key,
