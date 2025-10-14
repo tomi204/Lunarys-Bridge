@@ -39,6 +39,11 @@ export const metadata: Metadata = {
     description:
       "Encrypted cross-chain routing with sub-second settlement, programmable compliance, and hardware-attested proofs.",
   },
+  icons: {
+    icon: "/iso-logo.svg",
+    shortcut: "/iso-logo.svg",
+    apple: "/iso-logo.svg",
+  },
 };
 
 export default function RootLayout({

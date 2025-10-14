@@ -49,6 +49,7 @@ createAppKit({
   networks: [sepolia, localhostEvmNetwork, ...solanaNetworks],
   projectId,
   defaultNetwork: sepolia,
+  enableReconnect: false,
   features: {
     analytics: false,
     email: false,
