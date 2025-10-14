@@ -1,4 +1,5 @@
 pub mod callback;
+pub mod claim_request;
 pub mod config_init;
 pub mod config_set;
 pub mod deposit;
@@ -6,10 +7,13 @@ pub mod deposit_sol;
 pub mod init;
 pub mod init_request;
 pub mod queue;
+pub mod release_expired_claim;
 pub mod release_sol;
 pub mod release_spl;
+pub mod verify_and_settle_spl;
 
 pub use callback::{handler as plan_payout_callback_handler, PlanPayoutCallback};
+pub use claim_request::{handler as claim_request_handler, ClaimRequest};
 pub use config_init::{handler as init_config_handler, InitConfig};
 pub use config_set::{handler as set_config_handler, SetConfig};
 pub use deposit::{handler as deposit_and_queue_handler, DepositAndQueue};
@@ -17,5 +21,7 @@ pub use deposit_sol::{handler as deposit_sol_and_queue_handler, DepositSolAndQue
 pub use init::{handler as init_plan_payout_comp_def_handler, InitPlanPayoutCompDef};
 pub use init_request::{handler as init_request_handler, InitRequest};
 pub use queue::{handler as queue_plan_payout_handler, QueuePlanPayout};
+pub use release_expired_claim::{handler as release_expired_claim_handler, ReleaseExpiredClaim};
 pub use release_sol::{handler as release_sol_handler, ReleaseSol};
 pub use release_spl::{handler as release_spl_handler, ReleaseSpl};
+pub use verify_and_settle_spl::{handler as verify_and_settle_spl_handler, VerifyAndSettleSpl};
