@@ -49,6 +49,7 @@ npm install
 ## Configuration
 
 1. Copy the example environment file:
+
 ```bash
 cp .env.example .env
 ```
@@ -127,23 +128,28 @@ event BridgeInitiated(
 ### 2. Claiming Phase
 
 When a new bridge request is detected:
+
 - Node checks if it's already claimed
 - Calls `claimBridge(requestId)` with the required bond (0.03 ETH)
 - Bond is locked for 10 minutes while the transfer is executed
 
 ### 3. Decryption Phase
 
-The node decrypts the Solana destination address:
-- Uses fhEVM's reencryption mechanism
-- Generates ephemeral keypair for decryption
-- Signs EIP-712 message for authorization
-- Decrypts the Solana address locally
+The node decrypts the Solana destination address using Zama's FHEVM:
 
-**Note**: This requires the NewRelayer contract to have a `getEncryptedDestination(uint256)` view function. This is a planned enhancement.
+- Initializes fhevmjs instance with gateway connection
+- Generates ephemeral keypair for decryption
+- Fetches the encrypted handle from the `bridgeRequests` mapping
+- Signs EIP-712 message for authorization
+- Calls `reencrypt()` to decrypt the Solana address via Zama Gateway
+- Converts the decrypted uint256 to a base58 Solana address
+
+**Note**: The node must have FHE permissions granted by the contract (via `claimBridge()`). See `FHE_DECRYPTION_GUIDE.md` for detailed implementation.
 
 ### 4. Transfer Phase
 
 Transfers tokens on Solana:
+
 - For SOL: Direct `SystemProgram.transfer()`
 - For SPL tokens: Uses `@solana/spl-token` library
 - Creates or uses existing associated token accounts
@@ -151,6 +157,7 @@ Transfers tokens on Solana:
 ### 5. Verification Phase
 
 Submits proof to the relayer API:
+
 ```json
 {
   "requestId": "123",
@@ -200,17 +207,20 @@ The node handles various error scenarios:
 ## Security Considerations
 
 ### Bond Management
+
 - Minimum bond: 0.02 ETH
 - Bond locked for 10 minutes during transfer
 - 50% slashed if transfer not verified
 - Returned after successful verification
 
 ### Private Key Safety
+
 - Never commit `.env` file
 - Use environment variables in production
 - Consider using key management services (AWS KMS, etc.)
 
 ### Network Security
+
 - Use HTTPS for all RPC connections
 - Verify SSL certificates
 - Monitor for suspicious activity
@@ -254,31 +264,39 @@ Decrypted destination: 7EqQd...
 ## Troubleshooting
 
 ### "Node address is not authorized"
+
 - Contact the NewRelayer contract owner to authorize your node
 - Check that you're using the correct Ethereum address
 
-### "FHE decryption not fully implemented"
-- The NewRelayer contract needs a `getEncryptedDestination()` function
-- This is a planned enhancement for production deployment
+### "FHE decryption failed"
+
+- Ensure `FHEVM_GATEWAY_URL` is correct and accessible
+- Verify the node has been granted FHE permissions (after claiming)
+- Check that `FHEVM_CHAIN_ID` matches your network
+- See `FHE_DECRYPTION_GUIDE.md` for troubleshooting
 
 ### "Relayer API is not responding"
+
 - Check `RELAYER_API_URL` in `.env`
 - Ensure the relayer backend is running
 - The node will continue without API verification
 
 ### "Insufficient funds for bond"
+
 - Ensure your Ethereum wallet has at least 0.03 ETH
 - Check gas prices and adjust bond amount if needed
 
 ## Future Enhancements
 
-- [ ] Complete FHE decryption implementation
+- [x] Complete FHE decryption implementation ✓
 - [ ] SPL token mapping (ERC20 → SPL mint addresses)
+- [ ] Decimal conversion between ERC20 and SPL tokens
 - [ ] Automatic bond replenishment
 - [ ] Multi-request batching
 - [ ] Performance metrics and monitoring
-- [ ] Automatic retry logic
-- [ ] Database for request tracking
+- [ ] Automatic retry logic with exponential backoff
+- [ ] Database for request tracking and analytics
+- [ ] Support for multiple concurrent claims
 
 ## License
 

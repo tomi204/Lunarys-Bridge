@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { BridgeRequest, NodeConfig } from "../types";
+import { BridgeRequest, NodeConfig } from "../types/index.js";
 
 export class EthereumMonitor {
   private provider: ethers.Provider;
@@ -7,12 +7,13 @@ export class EthereumMonitor {
   private newRelayer: ethers.Contract;
   private config: NodeConfig;
   private lastProcessedBlock: number = 0;
+  private pendingClaims: Map<string, { txHash: string; timestamp: number }> = new Map();
 
   // NewRelayer contract ABI for event listening
   private readonly newRelayerAbi = [
     "event BridgeInitiated(uint256 indexed requestId, address indexed sender, address token, uint256 amountAfterFee)",
     "event BridgeClaimed(uint256 indexed requestId, address indexed solver, uint256 bond, uint64 deadline)",
-    "function bridgeRequests(uint256) view returns (address sender, address token, uint256 amount, tuple(uint256, bytes) encryptedSolanaDestination, uint256 timestamp, bool finalized, uint256 fee)",
+    "function bridgeRequests(uint256) view returns (address sender, address token, uint256 amount, uint256 encryptedSolanaDestination, uint256 timestamp, bool finalized, uint256 fee)",
     "function requestClaim(uint256) view returns (address solver, uint64 claimedAt, uint64 deadline, uint256 bond)",
     "function claimBridge(uint256 requestId) payable",
     "function authorizedNodes(address) view returns (bool)",
@@ -171,7 +172,69 @@ export class EthereumMonitor {
   async claimBridgeRequest(requestId: bigint): Promise<string> {
     console.log(`Attempting to claim bridge request ${requestId}...`);
 
-    // Check if already claimed
+    const requestIdStr = requestId.toString();
+
+    // Check if we already have a pending claim for this request
+    const pendingClaim = this.pendingClaims.get(requestIdStr);
+    if (pendingClaim) {
+      console.log(`Found existing claim transaction: ${pendingClaim.txHash}`);
+      console.log("Checking transaction status...");
+
+      try {
+        // Try to get the transaction receipt
+        const receipt = await this.provider.getTransactionReceipt(pendingClaim.txHash);
+
+        if (receipt) {
+          // Transaction was mined
+          this.pendingClaims.delete(requestIdStr);
+
+          if (receipt.status === 1) {
+            console.log(`✓ Bridge request ${requestId} was already claimed successfully!`);
+            console.log(`Transaction: ${pendingClaim.txHash}`);
+            return pendingClaim.txHash;
+          } else {
+            console.log("Previous transaction failed, will retry...");
+            // Continue to send new transaction
+          }
+        } else {
+          // Transaction still pending
+          const now = Date.now();
+          const elapsed = (now - pendingClaim.timestamp) / 1000; // seconds
+
+          // If transaction is older than 2 minutes, assume it's stuck and retry
+          if (elapsed < 120) {
+            console.log(`Transaction still pending (${elapsed.toFixed(0)}s ago), waiting...`);
+            console.log("Monitoring transaction status...");
+
+            // Wait for the transaction to be mined
+            const receipt = await this.provider.waitForTransaction(pendingClaim.txHash, 1, 120000); // 2 min timeout
+
+            if (receipt) {
+              this.pendingClaims.delete(requestIdStr);
+
+              if (receipt.status === 1) {
+                console.log(`✓ Bridge request ${requestId} claimed successfully!`);
+                console.log(`Transaction: ${pendingClaim.txHash}`);
+                return pendingClaim.txHash;
+              } else {
+                throw new Error(`Claim transaction failed for request ${requestId}`);
+              }
+            } else {
+              console.log("Transaction timeout, will retry with higher gas...");
+              // Continue to send replacement transaction
+            }
+          } else {
+            console.log(`Transaction has been pending for ${elapsed.toFixed(0)}s, will send replacement...`);
+            // Continue to send replacement transaction
+          }
+        }
+      } catch (error) {
+        console.error("Error checking pending transaction:", error);
+        // Continue to send new transaction
+      }
+    }
+
+    // Check if already claimed by another node
     const isClaimed = await this.isRequestClaimed(requestId);
     if (isClaimed) {
       throw new Error(`Request ${requestId} has already been claimed`);
@@ -182,22 +245,99 @@ export class EthereumMonitor {
 
     console.log(`Sending bond of ${this.config.bondAmount} ETH...`);
 
-    // Send claim transaction
-    const tx = await this.newRelayer.claimBridge(requestId, {
-      value: bondAmount,
-    });
+    try {
+      // Send claim transaction
+      const tx = await this.newRelayer.claimBridge(requestId, {
+        value: bondAmount,
+      });
 
-    console.log(`Claim transaction sent: ${tx.hash}`);
-    console.log("Waiting for confirmation...");
+      console.log(`Claim transaction sent: ${tx.hash}`);
+      console.log("Waiting for confirmation...");
 
-    const receipt = await tx.wait();
+      // Store in pending claims
+      this.pendingClaims.set(requestIdStr, {
+        txHash: tx.hash,
+        timestamp: Date.now(),
+      });
 
-    if (receipt?.status === 1) {
-      console.log(`✓ Bridge request ${requestId} claimed successfully!`);
-      console.log(`Transaction: ${tx.hash}`);
-      return tx.hash;
-    } else {
-      throw new Error(`Claim transaction failed for request ${requestId}`);
+      const receipt = await tx.wait();
+
+      // Remove from pending claims once confirmed
+      this.pendingClaims.delete(requestIdStr);
+
+      if (receipt?.status === 1) {
+        console.log(`✓ Bridge request ${requestId} claimed successfully!`);
+        console.log(`Transaction: ${tx.hash}`);
+        return tx.hash;
+      } else {
+        throw new Error(`Claim transaction failed for request ${requestId}`);
+      }
+    } catch (error: any) {
+      // Handle "already known" error - transaction was already sent
+      if (error?.code === 'UNKNOWN_ERROR' && error?.error?.message === 'already known') {
+        console.log("Transaction already in mempool, monitoring for confirmation...");
+
+        // Get the transaction hash from the raw transaction
+        if (error?.payload?.params?.[0]) {
+          const rawTx = error.payload.params[0];
+          const txHash = ethers.keccak256(rawTx);
+
+          console.log(`Monitoring existing transaction: ${txHash}`);
+
+          // Store in pending claims
+          this.pendingClaims.set(requestIdStr, {
+            txHash: txHash,
+            timestamp: Date.now(),
+          });
+
+          try {
+            // Wait for the existing transaction
+            const receipt = await this.provider.waitForTransaction(txHash, 1, 120000);
+
+            this.pendingClaims.delete(requestIdStr);
+
+            if (receipt?.status === 1) {
+              console.log(`✓ Bridge request ${requestId} claimed successfully!`);
+              console.log(`Transaction: ${txHash}`);
+              return txHash;
+            } else {
+              throw new Error(`Claim transaction failed for request ${requestId}`);
+            }
+          } catch (waitError) {
+            console.error("Error waiting for transaction:", waitError);
+            throw error; // Re-throw original error
+          }
+        }
+      }
+
+      // Handle "nonce too low" error - transaction was already mined
+      if (error?.code === 'NONCE_EXPIRED' || error?.message?.includes('nonce too low')) {
+        console.log("Transaction may have already been mined, checking claim status...");
+
+        const isClaimed = await this.isRequestClaimed(requestId);
+        if (isClaimed) {
+          // Check if we claimed it
+          const claim = await this.newRelayer.requestClaim(requestId);
+          if (claim.solver.toLowerCase() === this.wallet.address.toLowerCase()) {
+            console.log("✓ Bridge request was already claimed by this node");
+            // Try to find the transaction hash from recent blocks
+            const currentBlock = await this.provider.getBlockNumber();
+            const events = await this.newRelayer.queryFilter(
+              this.newRelayer.filters.BridgeClaimed(requestId),
+              currentBlock - 100,
+              currentBlock
+            );
+
+            if (events.length > 0 && 'transactionHash' in events[0]) {
+              return events[0].transactionHash;
+            }
+
+            throw new Error("Bridge already claimed by this node, but transaction hash not found");
+          }
+        }
+      }
+
+      throw error;
     }
   }
 
