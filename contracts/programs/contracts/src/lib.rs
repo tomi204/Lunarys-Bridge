@@ -19,6 +19,7 @@ pub mod state;
 
 // Re-export handlers & Contexts so entrypoints can delegate cleanly
 pub use instructions::{
+    claim_request_handler,
     // deposits
     deposit_and_queue_handler,
     deposit_sol_and_queue_handler,
@@ -28,10 +29,13 @@ pub use instructions::{
     init_request_handler,
     plan_payout_callback_handler,
     queue_plan_payout_handler,
+    release_expired_claim_handler,
     release_sol_handler,
     // releases
     release_spl_handler,
     set_config_handler,
+    verify_and_settle_spl_handler,
+    ClaimRequest,
     // Context types
     DepositAndQueue,
     DepositSolAndQueue,
@@ -40,21 +44,26 @@ pub use instructions::{
     InitRequest,
     PlanPayoutCallback,
     QueuePlanPayout,
+    ReleaseExpiredClaim,
     ReleaseSol,
     ReleaseSpl,
     SetConfig,
+    VerifyAndSettleSpl,
 };
 
 // Aliases the #[arcium_program] macro expects at crate root
 pub(crate) use instructions::callback::__client_accounts_plan_payout_callback;
+pub(crate) use instructions::claim_request::__client_accounts_claim_request;
 pub(crate) use instructions::config_init::__client_accounts_init_config;
 pub(crate) use instructions::config_set::__client_accounts_set_config;
 pub(crate) use instructions::deposit::__client_accounts_deposit_and_queue;
 pub(crate) use instructions::deposit_sol::__client_accounts_deposit_sol_and_queue;
 pub(crate) use instructions::init::__client_accounts_init_plan_payout_comp_def;
 pub(crate) use instructions::queue::__client_accounts_queue_plan_payout;
+pub(crate) use instructions::release_expired_claim::__client_accounts_release_expired_claim;
 pub(crate) use instructions::release_sol::__client_accounts_release_sol;
 pub(crate) use instructions::release_spl::__client_accounts_release_spl;
+pub(crate) use instructions::verify_and_settle_spl::__client_accounts_verify_and_settle_spl;
 
 declare_id!("AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by");
 
@@ -196,5 +205,21 @@ pub mod contracts {
             min_solver_bond,
             slash_bps,
         )
+    }
+    pub fn claim_request(ctx: Context<ClaimRequest>, request_id: u64) -> Result<()> {
+        claim_request_handler(ctx, request_id)
+    }
+
+    pub fn release_expired_claim(ctx: Context<ReleaseExpiredClaim>, request_id: u64) -> Result<()> {
+        release_expired_claim_handler(ctx, request_id)
+    }
+
+    pub fn verify_and_settle_spl(
+        ctx: Context<VerifyAndSettleSpl>,
+        request_id: u64,
+        dest_tx_hash: [u8; 32],
+        evidence_hash: [u8; 32],
+    ) -> Result<()> {
+        verify_and_settle_spl_handler(ctx, request_id, dest_tx_hash, evidence_hash)
     }
 }
