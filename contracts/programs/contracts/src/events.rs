@@ -13,3 +13,18 @@ pub struct BridgeDeposit {
 pub struct AttestationQueued {
     pub nonce: [u8; 16],
 }
+
+#[event]
+pub struct BridgePaidToSolver {
+    pub request_id: u64,
+    pub solver: Pubkey,
+    pub token_mint: Pubkey,
+    pub payout: u64, // amount_locked + fee_locked
+}
+
+#[event]
+pub struct BridgeClaimExpired {
+    pub request_id: u64,
+    pub solver: Pubkey,
+    pub slashed: u64, // lamports slashed
+}
