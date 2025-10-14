@@ -12,7 +12,7 @@ import {
   transfer,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { NodeConfig, SolanaTransferResult } from "../types";
+import { NodeConfig, SolanaTransferResult } from "../types/index.js";
 import bs58 from "bs58";
 
 export class SolanaTransferService {
