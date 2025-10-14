@@ -24,6 +24,11 @@ export interface NodeConfig {
   // FHE configuration
   fhevmChainId: number;
   fhevmGatewayUrl: string;
+  fhevmAclAddress: string;
+  fhevmKmsVerifierAddress: string;
+
+  // Relayer (for FHE permissions)
+  relayerPrivateKey?: string; // Optional: If node acts as relayer for decryption
 }
 
 export interface ClaimResult {

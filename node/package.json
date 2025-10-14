@@ -1,15 +1,16 @@
 {
   "name": "bridge-node",
   "version": "1.0.0",
+  "type": "module",
   "description": "Cross-chain bridge node for EVM to Solana transfers with FHE privacy",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node --transpile-only src/index.ts",
+    "dev": "node --loader ts-node/esm --experimental-specifier-resolution=node src/index.ts",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
-    "convert-solana-key": "ts-node --transpile-only scripts/convert-solana-key.ts"
+    "convert-solana-key": "node --loader ts-node/esm --experimental-specifier-resolution=node scripts/convert-solana-key.ts"
   },
   "ts-node": {
     "transpileOnly": true,
@@ -28,17 +29,17 @@
   "dependencies": {
     "@solana/spl-token": "^0.3.8",
     "@solana/web3.js": "^1.87.6",
+    "@zama-fhe/relayer-sdk": "^0.2.0",
     "axios": "^1.6.2",
     "bs58": "^5.0.0",
     "dotenv": "^16.3.1",
-    "ethers": "^6.9.0",
-    "fhevmjs": "^0.6.2",
-    "@zama-fhe/relayer-sdk": "0.2.0"
+    "ethers": "^6.9.0"
   },
   "devDependencies": {
     "@types/bs58": "^4.0.4",
     "@types/node": "^20.10.4",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.3.3"
   },
   "engines": {

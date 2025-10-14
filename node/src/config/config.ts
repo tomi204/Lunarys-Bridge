@@ -1,4 +1,4 @@
-import { NodeConfig } from "../types";
+import { NodeConfig } from "../types/index.js";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -24,6 +24,12 @@ export function getConfig(): NodeConfig {
     fhevmChainId: parseInt(process.env.FHEVM_CHAIN_ID || "11155111"), // Sepolia chain ID
     fhevmGatewayUrl:
       process.env.FHEVM_GATEWAY_URL || "https://gateway.sepolia.zama.ai",
+    fhevmAclAddress:
+      process.env.FHEVM_ACL_ADDRESS ||
+      "0x339EcE85B9E11a3A3AA557582784a15d7F82AAf2",
+    fhevmKmsVerifierAddress:
+      process.env.FHEVM_KMS_VERIFIER_ADDRESS ||
+      "0x9D6891A6240D6130c54ae243d8005063D05fE14b",
   };
 
   // Validate required configuration

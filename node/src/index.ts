@@ -1,15 +1,15 @@
-import { getConfig } from "./config/config";
-import { EthereumMonitor } from "./services/ethereumMonitor";
-import { SolanaTransferService } from "./services/solanaTransfer";
-import { RelayerApiClient } from "./services/relayerApi";
-import { FHEDecryptor } from "./utils/fheDecryption";
-import { BridgeRequest } from "./types";
+console.log("=== Bridge Node Starting ===");
+console.log("Loading modules...");
+
+import { getConfig } from "./config/config.js";
+import { EthereumMonitor } from "./services/ethereumMonitor.js";
+import { SolanaTransferService } from "./services/solanaTransfer.js";
+import { RelayerApiClient } from "./services/relayerApi.js";
+import { FHEDecryptor } from "./utils/fheDecryption.js";
+import { BridgeRequest } from "./types/index.js";
 import { ethers } from "ethers";
-import {
-  getSolanaTokenAddress,
-  isNativeToken,
-  getTokenMapping,
-} from "./config/tokenMapping";
+
+console.log("All modules loaded successfully");
 
 class BridgeNode {
   private config = getConfig();
@@ -38,10 +38,31 @@ class BridgeNode {
 
     // Initialize FHE decryptor
     const provider = new ethers.JsonRpcProvider(this.config.ethereumRpcUrl);
-    const wallet = new ethers.Wallet(this.config.ethereumPrivateKey, provider);
+
+    // Use relayer private key if available (relayer has FHE permissions in contract)
+    // Otherwise use node's own private key
+    const decryptionPrivateKey =
+      this.config.relayerPrivateKey || this.config.ethereumPrivateKey;
+    const wallet = new ethers.Wallet(decryptionPrivateKey, provider);
+
+    if (this.config.relayerPrivateKey) {
+      console.log(
+        `Using relayer identity for FHE decryption: ${wallet.address}`
+      );
+    } else {
+      console.log(`Using node identity for FHE decryption: ${wallet.address}`);
+    }
 
     this.fheDecryptor = new FHEDecryptor(this.config, provider, wallet);
     await this.fheDecryptor.initialize();
+    const decryptorPublicKey = this.fheDecryptor.getPublicKey();
+    if (decryptorPublicKey) {
+      console.log(`FHE decryptor ready. Public key: ${decryptorPublicKey}`);
+    } else {
+      console.log(
+        "FHE decryptor not fully available; TEST_SOLANA_DESTINATION fallback may be required"
+      );
+    }
 
     // Check Solana balance
     const solBalance = await this.solanaTransfer.getBalance();
@@ -151,70 +172,89 @@ class BridgeNode {
         console.log(`Decrypted destination: ${solanaDestination}`);
       } catch (error) {
         console.error("FHE decryption error:", error);
-        console.log("\n⚠ FHE decryption is not fully implemented yet");
-        console.log(
-          "For testing, you can manually set the destination address"
-        );
-        console.log(
-          "In production, ensure the NewRelayer contract has getEncryptedDestination() function\n"
-        );
 
-        // For now, we'll skip the actual transfer
-        throw new Error(
-          "FHE decryption not available - cannot proceed with transfer"
-        );
+        // TEMPORARY SOLUTION: Use hardcoded destination for testing
+        // TODO: Remove once the decryptor succeeds against the gateway in all environments
+        const testDestination = process.env.TEST_SOLANA_DESTINATION;
+
+        if (testDestination) {
+          console.log(
+            `\n⚠️  Using TEST destination address: ${testDestination}`
+          );
+          console.log("   (Set TEST_SOLANA_DESTINATION in .env for testing)");
+          solanaDestination = testDestination;
+        } else {
+          console.log(
+            "\n⚠ FHE decryption failed and no TEST_SOLANA_DESTINATION set"
+          );
+          console.log(
+            "Set TEST_SOLANA_DESTINATION in .env to continue testing"
+          );
+          console.log(
+            "Example: TEST_SOLANA_DESTINATION=YourSolanaAddressHere\n"
+          );
+
+          throw new Error(
+            "FHE decryption not available - set TEST_SOLANA_DESTINATION for testing"
+          );
+        }
       }
 
       // Step 4: Transfer tokens to Solana
       console.log(`\n[3/4] Transferring tokens on Solana...`);
-      console.log(`Token address (EVM): ${request.token}`);
+
+      // Import token mapping utilities
+      const { getTokenMapping, isNativeToken } = await import(
+        "./config/tokenMapping.js"
+      );
 
       let transferResult;
 
-      // Check if it's a native token (ETH → SOL) or ERC20 → SPL
+      // Check if it's a native token (ETH)
       if (isNativeToken(request.token)) {
-        console.log("Detected native token transfer (ETH → SOL)");
+        console.log("Detected native token (ETH) - transferring SOL on Solana");
         transferResult = await this.solanaTransfer.transferSOL(
           solanaDestination,
           request.amount
         );
       } else {
-        // Get the Solana SPL token address
-        const solanaTokenAddress = getSolanaTokenAddress(
+        // It's an ERC20 token, find the SPL equivalent
+        const tokenMapping = getTokenMapping(
           request.token,
           this.config.fhevmChainId
         );
 
-        if (!solanaTokenAddress) {
+        if (!tokenMapping) {
           throw new Error(
-            `No Solana token mapping found for EVM token ${request.token}. ` +
-            `Please add the mapping in config/tokenMapping.ts`
+            `No token mapping found for ERC20 token: ${request.token}`
           );
         }
 
-        const tokenInfo = getTokenMapping(request.token, this.config.fhevmChainId);
-        console.log(`Detected SPL token transfer: ${tokenInfo?.name || 'Unknown'}`);
-        console.log(`Solana token mint: ${solanaTokenAddress}`);
+        console.log(
+          `Detected ${tokenMapping.name} token - transferring to SPL mint: ${tokenMapping.solanaAddress}`
+        );
 
-        // Handle decimal conversion if needed
-        let amountToTransfer = request.amount;
-        if (tokenInfo && tokenInfo.decimals.evm !== tokenInfo.decimals.solana) {
-          console.log(
-            `Converting decimals: ${tokenInfo.decimals.evm} (EVM) → ${tokenInfo.decimals.solana} (Solana)`
-          );
-          const decimalDiff = tokenInfo.decimals.solana - tokenInfo.decimals.evm;
-          if (decimalDiff > 0) {
-            amountToTransfer = request.amount * BigInt(10 ** decimalDiff);
+        // Convert amount based on decimals difference
+        let convertedAmount = request.amount;
+        if (tokenMapping.decimals.evm !== tokenMapping.decimals.solana) {
+          // Convert from EVM decimals to Solana decimals
+          const decimalsDiff =
+            tokenMapping.decimals.solana - tokenMapping.decimals.evm;
+          if (decimalsDiff > 0) {
+            convertedAmount = request.amount * BigInt(10 ** decimalsDiff);
           } else {
-            amountToTransfer = request.amount / BigInt(10 ** Math.abs(decimalDiff));
+            convertedAmount =
+              request.amount / BigInt(10 ** Math.abs(decimalsDiff));
           }
-          console.log(`Amount adjusted: ${request.amount} → ${amountToTransfer}`);
+          console.log(
+            `Amount converted: ${request.amount} (EVM) -> ${convertedAmount} (Solana)`
+          );
         }
 
         transferResult = await this.solanaTransfer.transferSPLToken(
-          solanaTokenAddress,
+          tokenMapping.solanaAddress,
           solanaDestination,
-          amountToTransfer
+          convertedAmount
         );
       }
 
@@ -222,11 +262,33 @@ class BridgeNode {
         throw new Error(`Solana transfer failed: ${transferResult.error}`);
       }
 
-      console.log(
-        `\n✓✓✓ Bridge request ${requestIdStr} processed successfully! ✓✓✓`
-      );
-      console.log(`Ethereum claim: ${claimTxHash}`);
-      console.log(`Solana transfer: ${transferResult.signature}`);
+      console.log(`✓ Solana transfer successful: ${transferResult.signature}`);
+
+      // Step 5: Submit verification to relayer API
+      console.log(`\n[4/4] Submitting verification to relayer API...`);
+      const verificationResult = await this.relayerApi.submitVerification({
+        requestId: requestIdStr,
+        ethClaimTxHash: claimTxHash,
+        solanaTransferSignature: transferResult.signature,
+        solanaDestination: solanaDestination,
+        amount: request.amount.toString(),
+        token: request.token,
+      });
+
+      if (verificationResult.success) {
+        console.log(
+          `\n✓✓✓ Bridge request ${requestIdStr} processed successfully! ✓✓✓`
+        );
+        console.log(`Ethereum claim: ${claimTxHash}`);
+        console.log(`Solana transfer: ${transferResult.signature}`);
+      } else {
+        console.warn(
+          `\n⚠ Verification submission failed: ${verificationResult.message}`
+        );
+        console.warn(
+          "The transfer was completed, but the relayer was not notified"
+        );
+      }
     } catch (error) {
       console.error(
         `\n✗ Error processing bridge request ${requestIdStr}:`,
@@ -255,7 +317,9 @@ class BridgeNode {
 // Main entry point
 async function main() {
   try {
+    console.log("Starting bridge node...");
     const node = new BridgeNode();
+    console.log("BridgeNode instance created");
     await node.start();
   } catch (error) {
     console.error("Fatal error starting bridge node:", error);
@@ -264,4 +328,5 @@ async function main() {
 }
 
 // Run the node
+console.log("Node module loaded, calling main()...");
 main();
