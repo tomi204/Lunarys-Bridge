@@ -6,36 +6,35 @@ const footerColumns = [
     title: "Product",
     links: [
       { label: "Bridge", href: "/bridge" },
-      { label: "Command center", href: "#" },
-      { label: "Policy packs", href: "#" },
-      { label: "Security", href: "#" },
+      { label: "Command center", href: "/command-center" },
+      { label: "Policy packs", href: "/policy-packs" },
+      { label: "Security", href: "/security" },
     ],
   },
   {
     title: "Resources",
     links: [
-      { label: "Documentation", href: "/#docs" },
-      { label: "Integration playbook", href: "#" },
-      { label: "Audit reports", href: "#" },
-      { label: "Status", href: "#" },
+      { label: "Documentation", href: "/documentation" },
+      { label: "Integration playbook", href: "/integration-playbook" },
+      { label: "Audit reports", href: "/audit-reports" },
+      { label: "Status", href: "/status" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Press", href: "#" },
+      { label: "About", href: "/about" },
+      { label: "Careers", href: "/careers" },
+      { label: "Press", href: "/press" },
       { label: "Legal", href: "/terms" },
     ],
   },
   {
     title: "Community",
     links: [
-      { label: "X / Twitter", href: "#" },
-      { label: "GitHub", href: "#" },
-      { label: "Telegram", href: "#" },
-      { label: "Discord", href: "#" },
+      { label: "X / Twitter", href: "https://x.com/LunarysLabs" },
+      { label: "GitHub", href: "https://github.com/Lunaris-protocol" },
+      { label: "Telegram", href: "https://t.me/tomii204" },
     ],
   },
 ];
@@ -59,20 +58,30 @@ export function Footer() {
                 className="h-9 w-9 animate-spin-slow"
                 priority
               />
-              <span className="text-2xl font-semibold tracking-tight text-white">Lunarys</span>
+              <span className="text-2xl font-semibold tracking-tight text-white">
+                Lunarys
+              </span>
             </Link>
             <p className="max-w-sm text-sm leading-relaxed text-gray-400">
-              The encrypted cross-chain bridge built for teams that trade at the speed of intent. Private by default,
-              auditor-friendly by design.
+              The encrypted cross-chain bridge built for teams that trade at the
+              speed of intent. Private by default, auditor-friendly by design.
             </p>
             <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-widest text-cyan-200/80">
-              <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1">Zero-knowledge verified</span>
-              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1">Non-custodial</span>
-              <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1">HSM attested</span>
+              <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1">
+                Zero-knowledge verified
+              </span>
+              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1">
+                Non-custodial
+              </span>
+              <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1">
+                HSM attested
+              </span>
             </div>
             <div className="grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-gray-300 md:max-w-md">
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-widest text-gray-400">Audit partners</span>
+                <span className="text-xs uppercase tracking-widest text-gray-400">
+                  Audit partners
+                </span>
                 <span className="text-xs text-cyan-200">Updated quarterly</span>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-white">
@@ -109,9 +118,12 @@ export function Footer() {
 
         <div className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-gray-400 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold text-white">Need throughput guarantees?</p>
+            <p className="text-sm font-semibold text-white">
+              Need throughput guarantees?
+            </p>
             <p className="text-xs text-gray-400">
-              Our protocol team offers custom liquidity mirrors, policy packs, and SLAs for institutional desks.
+              Our protocol team offers custom liquidity mirrors, policy packs,
+              and SLAs for institutional desks.
             </p>
           </div>
           <Link
@@ -126,13 +138,13 @@ export function Footer() {
         <div className="flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 text-xs text-gray-500 md:flex-row md:items-center">
           <p>© {new Date().getFullYear()} Lunarys. All rights reserved.</p>
           <div className="flex flex-wrap gap-6">
-            <Link href="#" className="transition-colors hover:text-white">
+            <Link href="/privacy-policy" className="transition-colors hover:text-white">
               Privacy policy
             </Link>
             <Link href="/terms" className="transition-colors hover:text-white">
               Terms of service
             </Link>
-            <Link href="#" className="transition-colors hover:text-white">
+            <Link href="/cookie-preferences" className="transition-colors hover:text-white">
               Cookie preferences
             </Link>
           </div>
