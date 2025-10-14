@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { EthService } from 'src/eth/eth.service';
+import { SolService } from 'src/sol/sol.service';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [ConfigModule],
-  providers: [EthService],
-  exports: [EthService],
+  providers: [SolService],
+  exports: [SolService],
 })
-export class EthModule {}
+export class SolModule {}
