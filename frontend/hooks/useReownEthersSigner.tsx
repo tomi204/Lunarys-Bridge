@@ -17,6 +17,7 @@ import {
   useAppKitNetwork,
   useAppKitProvider,
 } from "@reown/appkit/react";
+import { toast } from "sonner";
 
 export interface UseReownEthersSignerState {
   provider: ethers.Eip1193Provider | undefined;
@@ -178,9 +179,8 @@ export const ReownEthersSignerProvider: React.FC<
 export function useReownEthersSigner() {
   const context = useContext(ReownEthersSignerContext);
   if (context === undefined) {
-    throw new Error(
-      "useReownEthersSigner must be used within a ReownEthersSignerProvider"
-    );
+    toast.error("useReownEthersSigner must be used within a ReownEthersSignerProvider");
+    throw new Error("useReownEthersSigner must be used within a ReownEthersSignerProvider");
   }
   return context;
 }

@@ -1,3 +1,5 @@
+import { TOKEN_USDC } from "@/lib/constants";
+
 export type TokenConfig = {
   symbol: string;
   address: `0x${string}`;
@@ -9,7 +11,7 @@ const TOKENS_BY_CHAIN: Record<number, Record<string, TokenConfig>> = {
   11155111: {
     USDC: {
       symbol: "USDC",
-      address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+      address: TOKEN_USDC as `0x${string}`,
       decimals: 6,
       label: "USD Coin",
     },

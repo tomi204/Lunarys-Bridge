@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { EthService } from 'src/eth/eth.service';
 import { SolService } from 'src/sol/sol.service';
@@ -14,6 +14,8 @@ import { SolToEvmRepository } from 'src/common/repositories/sol-to-evm.repositor
 
 @Injectable()
 export class VerificationService {
+  private readonly logger = new Logger(VerificationService.name);
+
   constructor(
     private readonly eth: EthService,
     private readonly sol: SolService,
@@ -22,14 +24,14 @@ export class VerificationService {
   ) {}
 
   /**
-   * EVM -> SOL:
+   * EVM -> SOL flow:
    * 1) Persist "received"
    * 2) Verify arrival on Solana (destination leg)
-   * 3) Precheck EVM state (request exists, not finalized, active claim, not expired)
+   * 3) Precheck EVM state (exists, not finalized, active claim, not expired)
    * 4) Settle on EVM (verifyAndSettle)
    */
   async handleEvmToSol(dto: EvmToSolVerificationDto) {
-    // 1) persist RECEIVED
+    // 1) Persist the “RECEIVED” record for auditing and idempotency
     await this.e2sRepo.upsertReceived({
       requestId: dto.requestId,
       tokenEvm: dto.token,
@@ -40,16 +42,7 @@ export class VerificationService {
       evidenceURL: dto.evidenceURL,
     });
 
-    // 2) decimals adjust EVM -> SOL
-    const info = findTokenInfo(dto.token) ?? {
-      name: 'Unknown',
-      evm: { address: dto.token as `0x${string}`, decimals: 18 },
-      sol: { mint: '', decimals: 9 },
-    };
-    const evmAmt = BigInt(dto.amount);
-    const { solAmount, mint } = adjustToSolDecimals(evmAmt, info);
-
-    // Sanity checks (client data)
+    // 2) Basic request validation
     if (!dto.solanaTransferSignature) {
       await this.e2sRepo.markFailed(dto.requestId, 'Missing Solana signature');
       throw new BadRequestException('Missing Solana signature');
@@ -59,61 +52,99 @@ export class VerificationService {
       throw new BadRequestException('Missing Solana destination');
     }
 
-    // 3) verify arrival on Solana
-    await this.sol.verifyTransfer({
-      signature: dto.solanaTransferSignature,
-      recipient: dto.solanaDestination,
-      amount: solAmount,
-      mint,
-    });
+    let evmAmt: bigint;
+    try {
+      evmAmt = BigInt(dto.amount);
+    } catch {
+      await this.e2sRepo.markFailed(dto.requestId, 'Invalid amount format');
+      throw new BadRequestException('Invalid amount format');
+    }
+    if (evmAmt <= 0n) {
+      await this.e2sRepo.markFailed(dto.requestId, 'Amount must be greater than 0');
+      throw new BadRequestException('Amount must be greater than 0');
+    }
 
-    // 4) compute hashes for EVM settlement
-    const requestId = BigInt(dto.requestId);
-    const destTxHash = ethers.keccak256(
-      ethers.toUtf8Bytes(dto.solanaTransferSignature),
+    // 3) Resolve ERC20→SPL mapping and convert EVM units → SPL units
+    const mapping = findTokenInfo(dto.token);
+    if (!mapping) {
+      const msg = 'Unknown ERC20→SPL mapping. Configure TOKEN_USDC / TOKEN_SOL (and decimals) in env.';
+      await this.e2sRepo.markFailed(dto.requestId, msg);
+      throw new BadRequestException(msg);
+    }
+    if (!mapping.sol.mint) {
+      await this.e2sRepo.markFailed(dto.requestId, 'Missing SPL mint in token mapping');
+      throw new BadRequestException('Missing SPL mint in token mapping');
+    }
+
+    const { solAmount, mint } = adjustToSolDecimals(evmAmt, mapping);
+    this.logger.log(
+      `[EVM->SOL] amount(evmunits)=${evmAmt} (${mapping.evm.decimals}) → amount(splunits)=${solAmount} (${mapping.sol.decimals}) | mint=${mint}`,
     );
+
+    // 4) Verify the Solana leg (recipient balance delta in the correct SPL mint)
+    try {
+      await this.sol.verifyTransfer({
+        signature: dto.solanaTransferSignature,
+        recipient: dto.solanaDestination,
+        amount: solAmount,
+        mint, // must match the SPL mint actually transferred
+      });
+    } catch (e: any) {
+      const msg = `[EVM->SOL] Solana transfer verification failed: ${e?.message ?? e}`;
+      this.logger.warn(msg);
+      await this.e2sRepo.markFailed(dto.requestId, msg);
+      throw new BadRequestException(msg);
+    }
+
+    // 5) Derive settlement evidence for the EVM contract call
+    const requestId = BigInt(dto.requestId);
+    const destTxHash = ethers.keccak256(ethers.toUtf8Bytes(dto.solanaTransferSignature));
     const evidenceHash = ethers.keccak256(
       ethers.toUtf8Bytes(`${dto.token}|${dto.amount}|${dto.solanaDestination}`),
     );
 
-    // Precheck EVM state to avoid on-chain revert with opaque messages.
+    // 6) Pre-check EVM state to avoid opaque on-chain reverts
     const br = await this.eth.getBridgeRequest(requestId);
+    console.log(br);
     if (!br || br.sender === ethers.ZeroAddress) {
-      await this.e2sRepo.markFailed(dto.requestId, 'Bridge request not found on EVM');
-      throw new BadRequestException('Bridge request not found on EVM');
+      const msg = 'Bridge request not found on EVM';
+      await this.e2sRepo.markFailed(dto.requestId, msg);
+      throw new BadRequestException(msg);
     }
     if (br.finalized) {
-      await this.e2sRepo.markFailed(dto.requestId, 'Request is already finalized');
-      throw new BadRequestException('Request is already finalized');
+      const msg = 'Request is already finalized';
+      await this.e2sRepo.markFailed(dto.requestId, msg);
+      throw new BadRequestException(msg);
     }
 
     const cl = await this.eth.getClaim(requestId);
     if (!cl || cl.solver === ethers.ZeroAddress) {
-      await this.e2sRepo.markFailed(dto.requestId, 'No active claim for this request');
-      throw new BadRequestException('No active claim for this request');
+      const msg = 'No active claim for this request';
+      await this.e2sRepo.markFailed(dto.requestId, msg);
+      throw new BadRequestException(msg);
     }
-
     const now = Math.floor(Date.now() / 1000);
     if (Number(cl.deadline) < now) {
-      await this.e2sRepo.markFailed(dto.requestId, 'Claim already expired');
-      throw new BadRequestException('Claim already expired');
+      const msg = 'Claim already expired';
+      await this.e2sRepo.markFailed(dto.requestId, msg);
+      throw new BadRequestException(msg);
     }
 
-    // 5) mark VERIFIED (off-chain bookkeeping)
+    // 7) Mark “VERIFIED” off-chain to complete bookkeeping
     await this.e2sRepo.markVerified(dto.requestId, {
       destTxHash,
       evidenceHash,
-      tokenSolMint: mint ?? '',
+      tokenSolMint: mint,
       amountSol: solAmount.toString(),
     });
 
-    // 6) settle on EVM
+    // 8) Settle on EVM by calling the relayer-only verifyAndSettle
     try {
       const receipt = await this.eth.verifyAndSettle(
         requestId,
         destTxHash,
         evidenceHash,
-        dto.evidenceURL,
+        dto.evidenceURL, // pass undefined to use the no-URL overload
       );
       await this.e2sRepo.markSettled(dto.requestId, receipt?.transactionHash);
       return { verified: true, ethTx: receipt?.transactionHash };
@@ -123,15 +154,15 @@ export class VerificationService {
     }
   }
 
+
   /**
-   * SOL -> EVM:
+   * SOL -> EVM flow:
    * 1) Persist "received"
-   * 2) Verify deposit into Solana vault (source leg)
-   * 3) Precheck EVM capability (contract has enough balance; recipient/token sane)
-   * 4) Deliver on EVM (deliverTokens)
+   * 2) Verify deposit into Solana vault
+   * 3) Precheck EVM capability (bridge balance, sane recipient/token)
+   * 4) Deliver on EVM
    */
   async handleSolToEvm(dto: SolToEvmVerificationDto) {
-    // 1) persist RECEIVED
     await this.s2eRepo.upsertReceived({
       requestId: dto.requestId,
       solanaDepositSignature: dto.solanaDepositSignature,
@@ -142,7 +173,6 @@ export class VerificationService {
       evmToken: dto.evmToken,
     });
 
-    // Sanity checks (client data)
     if (!ethers.isAddress(dto.evmRecipient)) {
       await this.s2eRepo.markFailed(dto.requestId, 'Invalid EVM recipient');
       throw new BadRequestException('Invalid EVM recipient');
@@ -152,42 +182,38 @@ export class VerificationService {
       throw new BadRequestException('Invalid EVM token address');
     }
 
-    // 2) verify deposit on Solana
+    // Verify deposit on Solana
     await this.sol.verifyDeposit({
       signature: dto.solanaDepositSignature,
       vault: dto.solanaVault,
       amount: BigInt(dto.amount),
       mint: dto.solanaMint,
-      // programId: 'AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by', // optional assert your program id was invoked
     });
 
-    // 3) mark VERIFIED
+    // Mark VERIFIED
     await this.s2eRepo.markVerified(dto.requestId);
 
-    // 4) decimals adjust SOL -> EVM
-    const info = findTokenInfo(dto.evmToken) ?? {
+    // Decimals SOL -> EVM
+    const mapping = findTokenInfo(dto.evmToken) ?? {
       name: 'Unknown',
       evm: { address: dto.evmToken as `0x${string}`, decimals: 18 },
       sol: { mint: dto.solanaMint ?? '', decimals: 9 },
     };
-    const { evmAmount } = adjustToEvmDecimals(BigInt(dto.amount), info);
+    const { evmAmount } = adjustToEvmDecimals(BigInt(dto.amount), mapping);
 
-    // EVM-side prechecks before calling deliverTokens to avoid revert:
-    // - Ensure contract holds enough balance of the ERC20
+    // EVM-side prechecks
     const contractBal = await this.eth.getContractTokenBalance(dto.evmToken as `0x${string}`);
     if (contractBal < evmAmount) {
       const msg = `Insufficient bridge balance on EVM (${contractBal} < ${evmAmount})`;
       await this.s2eRepo.markFailed(dto.requestId, msg);
       throw new BadRequestException(msg);
     }
-
-    // - Token non-zero and amount > 0 (the contract enforces this; we precheck for clarity)
     if (evmAmount <= 0n) {
       await this.s2eRepo.markFailed(dto.requestId, 'Amount must be greater than 0');
       throw new BadRequestException('Amount must be greater than 0');
     }
 
-    // 5) deliver on EVM
+    // Deliver on EVM
     try {
       const receipt = await this.eth.deliverTokens(
         dto.evmRecipient as `0x${string}`,
@@ -216,4 +242,3 @@ export class VerificationService {
     return rec;
   }
 }
-
