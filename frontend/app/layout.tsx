@@ -5,6 +5,7 @@ import { AppKit } from "./reown";
 import { ReownEthersSignerProvider } from "@/hooks/useReownEthersSigner";
 import { SolanaWalletProvider } from "@/hooks/useReownSolanaWallet";
 import { FhevmBridgeProvider } from "@/providers/fhevm-bridge-provider";
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
   title: {
     default: "Lunarys | Encrypted Cross-Chain Bridge",
     template: "%s | Lunarys",
+  },
+  icons: {
+    icon: [
+      //{ url: "/favicon.ico" },
+      { url: "/iso-logo.svg", sizes: "32x32", type: "image/svg" },
+    ]
   },
   description:
     "Lunarys delivers zero-knowledge encrypted cross-chain transfers with Raydium liquidity, Triton latency, and programmable compliance controls.",
@@ -54,7 +61,10 @@ export default function RootLayout({
         <AppKit>
           <ReownEthersSignerProvider>
             <SolanaWalletProvider>
-              <FhevmBridgeProvider>{children}</FhevmBridgeProvider>
+              <FhevmBridgeProvider>
+                {children}
+                <Toaster richColors position="top-center" />
+              </FhevmBridgeProvider>
             </SolanaWalletProvider>
           </ReownEthersSignerProvider>
         </AppKit>

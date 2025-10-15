@@ -27,6 +27,8 @@ import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 import { NEW_RELAYER_ABI } from "@/abi/newRelayer";
 import { ERC20_ABI } from "@/abi/erc20";
 import { getTokenConfig } from "@/config/tokens";
+import { toast } from "sonner";
+import { decodeBySelector, prettyBridgeError } from "@/lib/evm-error";
 
 const chainOptions = [
   {
@@ -167,9 +169,7 @@ export default function BridgePage() {
       setEncryptedPayload(payload);
       const tokenConfig = activeTokenConfig;
       if (!tokenConfig) {
-        throw new Error(
-          `El token ${selectedToken} no está configurado para esta red`
-        );
+        return toast.error(`El token ${selectedToken} no está configurado para esta red`);
       }
 
       const sanitizedAmount = amount && amount.trim().length > 0 ? amount : "0";
@@ -177,18 +177,18 @@ export default function BridgePage() {
       try {
         parsedAmount = ethers.parseUnits(sanitizedAmount, tokenConfig.decimals);
       } catch {
-        throw new Error("Cantidad inválida para el token seleccionado");
+        return toast.error("Cantidad inválida para el token seleccionado");
       }
       if (parsedAmount <= 0n) {
-        throw new Error("La cantidad debe ser mayor que cero");
+        return toast.error("La cantidad debe ser mayor que cero");
       }
 
       if (!newRelayerAddress) {
-        throw new Error("No se encontró la dirección del contrato NewRelayer");
+        return toast.error("No se encontró la dirección del contrato NewRelayer");
       }
 
       if (!account) {
-        throw new Error("No se detectó la cuenta EVM conectada");
+        return toast.error("No se detectó la cuenta EVM conectada");
       }
       const signerInstance = signer as ethers.Signer;
       const ownerAddress = account as `0x${string}`;
@@ -245,11 +245,10 @@ export default function BridgePage() {
         setTxRequestId(requestId);
       }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error desconocido al iniciar el bridge";
-      setEncryptionError(message);
+      const decoded = decodeBySelector(error);
+      const nice = prettyBridgeError(decoded);
+      toast.error(nice);
+      setEncryptionError(nice);
     } finally {
       setIsLoading(false);
     }
@@ -340,7 +339,7 @@ export default function BridgePage() {
       </header>
 
       <main className="relative z-10 px-6 pb-24">
-        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 pt-16 text-center">
+        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 pt-12 text-center">
           <div className="flex flex-col items-center gap-3">
             <Badge className="bg-white/10 text-cyan-200">Bridge cockpit</Badge>
             <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -349,7 +348,7 @@ export default function BridgePage() {
           </div>
 
           <Card className="w-full border-white/10 bg-white/5 shadow-[0_45px_140px_-80px_rgba(56,226,255,0.8)]">
-            <CardContent className="space-y-8 p-8">
+            <CardContent className="space-y-8 p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
                 <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
@@ -364,7 +363,7 @@ export default function BridgePage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={fromChain} onValueChange={setFromChain}>
-                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
+                      <SelectTrigger className="w-[155px] border-white/10 bg-white/10 text-lg font-semibold text-white cursor-pointer py-7">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-[#030712] text-white">
@@ -394,7 +393,7 @@ export default function BridgePage() {
                         setApprovalHash(null);
                       }}
                     >
-                      <SelectTrigger className="w-[120px] border-white/10 bg-white/10 text-base font-semibold text-white">
+                      <SelectTrigger className="w-[155px] border-white/10 bg-white/10 text-base font-semibold text-white cursor-pointer py-7">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-[#030712] text-white">
@@ -428,7 +427,7 @@ export default function BridgePage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-auto px-3 py-1 text-xs font-semibold text-white hover:bg-white/10"
+                      className="h-auto px-3 py-1 text-xs font-semibold text-white hover:bg-white/10 cursor-pointer"
                     >
                       Max
                     </Button>
@@ -440,7 +439,7 @@ export default function BridgePage() {
                     onClick={handleSwapChains}
                     variant="outline"
                     size="icon"
-                    className="rounded-2xl border border-white/20 bg-white/10 p-3 text-white transition-all hover:-translate-y-1 hover:bg-white/20"
+                    className="rounded-2xl border border-white/20 bg-white/10 p-3 text-white transition-all hover:-translate-y-1 hover:bg-white/20 cursor-pointer"
                     disabled={fromChain === toChain}
                     aria-label="Swap chains"
                   >
@@ -459,7 +458,7 @@ export default function BridgePage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={toChain} onValueChange={setToChain}>
-                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
+                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white cursor-pointer py-7">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-[#030712] text-white">
@@ -529,7 +528,7 @@ export default function BridgePage() {
               <Button
                 onClick={handleInitiateBridge}
                 disabled={isBridgeDisabled}
-                className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 cursor-pointer py-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Encrypting..." : "Initiate bridge"}
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -559,11 +558,11 @@ export default function BridgePage() {
                     {newRelayerAddress}
                   </span>
                 </p>
-                {!isConnected && !isSolanaConnected && (
-                  <p className="text-xs text-yellow-300">
-                    Conecta tu wallet para cifrar la dirección destino.
+                  <p className="text-xs text-yellow-300 h-4">
+                    {!isConnected && !isSolanaConnected && (
+                        <>Conecta tu wallet para cifrar la dirección destino.</>
+                    )}
                   </p>
-                )}
                 {isConnected && !isCorrectNetwork && (
                   <p className="text-xs text-yellow-300">
                     Cambia a la red Sepolia ({expectedChainId}) antes de

@@ -9,6 +9,7 @@ import { ConstellationBackground } from "@/components/constellation-background";
 import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Header } from "@/components/header";
 
 type Section = {
   id: string;
@@ -324,52 +325,7 @@ export default function TermsPage() {
       <div className="absolute bottom-[-20%] left-[20%] h-[360px] w-[360px] rounded-full bg-cyan-500/25 blur-[140px]" />
       <div className="absolute top-[30%] right-[-10%] h-[480px] w-[480px] rounded-full bg-indigo-500/25 blur-[160px]" />
 
-      <header className="relative z-20">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-8">
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/iso-logo.svg"
-              alt="Lunarys logo"
-              width={36}
-              height={36}
-              className="h-9 w-9 animate-spin-slow"
-              priority
-            />
-            <span className="text-2xl font-semibold tracking-tight">Lunarys</span>
-          </Link>
-          <nav className="hidden items-center gap-10 rounded-full border border-white/5 bg-white/5 px-6 py-2 backdrop-blur-xl md:flex">
-            <Link
-              href="/"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
-              Home
-            </Link>
-            <Link
-              href="/#experience"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
-              Features
-            </Link>
-            <Link
-              href="/#docs"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
-              Docs
-            </Link>
-            <Link
-              href="/#team"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
-              Team
-            </Link>
-          </nav>
-          <Link href="/bridge">
-            <Button className="bg-gradient-to-r from-cyan-400 via-emerald-300 to-sky-400 px-6 py-4 text-sm font-semibold text-black shadow-[0_0_35px_rgba(56,226,255,0.35)]">
-              Launch app
-            </Button>
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       <main className="relative z-10 px-6 pb-28">
         <div className="mx-auto w-full max-w-7xl pt-12">
