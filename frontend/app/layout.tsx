@@ -23,12 +23,6 @@ export const metadata: Metadata = {
     default: "Lunarys | Encrypted Cross-Chain Bridge",
     template: "%s | Lunarys",
   },
-  icons: {
-    icon: [
-      //{ url: "/favicon.ico" },
-      { url: "/iso-logo.svg", sizes: "32x32", type: "image/svg" },
-    ]
-  },
   description:
     "Lunarys delivers zero-knowledge encrypted cross-chain transfers with Raydium liquidity, Triton latency, and programmable compliance controls.",
   openGraph: {
@@ -45,6 +39,11 @@ export const metadata: Metadata = {
     title: "Lunarys | Encrypted Cross-Chain Bridge",
     description:
       "Encrypted cross-chain routing with sub-second settlement, programmable compliance, and hardware-attested proofs.",
+  },
+  icons: {
+    icon: "/iso-logo.svg",
+    shortcut: "/iso-logo.svg",
+    apple: "/iso-logo.svg",
   },
 };
 
