@@ -19,128 +19,156 @@ type Section = {
 
 const sections: Section[] = [
   {
-    id: "acceptance",
-    title: "1. Acceptance of Terms",
+    id: "overview",
+    title: "1. About These Terms",
     body: (
       <>
         <p>
-          By accessing or using Lunarys (&quot;the Service&quot;, &quot;Platform&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), you agree
-          to be bound by these Terms of Service (&quot;Terms&quot;). If you do not agree to these Terms, you may not
-          access or use the Service.
+          These Terms of Service (&quot;Terms&quot;) govern your access to and use of the Lunarys Bridge interface, smart
+          contracts, related APIs, documentation, and any content or features we provide (collectively, the &quot;Service&quot;).
+          By accessing or using the Service, you agree to be bound by these Terms. If you do not agree, do not use the Service.
         </p>
         <p>
-          The Service is a decentralized cross-chain bridge protocol operated as a software interface. We do not
-          custody, control, or manage any user funds or assets at any time.
+          Lunarys is a non-custodial software protocol. We never take possession of digital assets, route funds through
+          custodians, or guarantee the successful completion of any transaction.
+        </p>
+        <p>
+          Supplemental terms or policies may apply to certain features. Where there is a conflict, the more specific terms control.
         </p>
       </>
     ),
   },
   {
     id: "eligibility",
-    title: "2. Eligibility and Restrictions",
+    title: "2. Eligibility",
     body: (
       <>
         <p>
-          <strong className="text-cyan-300">2.1 Age requirement:</strong> You must be at least 18 years old and legally capable of entering into binding
-          contracts to use this Service.
+          You must be at least 18 years old, legally competent, and not barred from using the Service under applicable law.
         </p>
         <p>
-          <strong className="text-cyan-300">2.2 Geographic restrictions:</strong> The Service is not available to persons or entities
-          who reside in, are located in, are incorporated in, or have registered offices in any Restricted
-          Territory, including but not limited to: United States, North Korea, Iran, Syria, Cuba, Crimea, or any
-          jurisdiction where the Service would be illegal.
+          You may not use the Service if you are located in, organized in, or a resident of any jurisdiction where the Service is
+          prohibited or would require registration that we have not undertaken, including but not limited to: the United States,
+          Canada, sanctioned jurisdictions (e.g., Cuba, Iran, North Korea, Syria, Crimea, Donetsk, Luhansk), or areas embargoed by
+          the United Nations or the European Union.
         </p>
         <p>
-          <strong className="text-cyan-300">2.3 Compliance:</strong> You are solely responsible for ensuring compliance with all laws
-          and regulations applicable to your use of the Service in your jurisdiction.
+          You represent and warrant that you will comply with all laws, regulations, and internal policies that apply to your use of
+          the Service.
         </p>
       </>
     ),
   },
   {
-    id: "service",
-    title: "3. Service Description and Disclaimers",
+    id: "access",
+    title: "3. Access and Wallets",
     body: (
       <>
         <p>
-          <strong className="text-cyan-300">3.1 Non-custodial service:</strong> Lunarys is a non-custodial software interface. We do not hold,
-          custody, control, or manage user funds. All transactions are executed through smart contracts on
-          public blockchains.
+          Accessing the Service requires the use of a third-party wallet that supports the relevant blockchain networks. Wallets are
+          not operated or controlled by Lunarys.
         </p>
         <p>
-          <strong className="text-cyan-300">3.2 Smart contract risks:</strong> Smart contracts are experimental technology. Despite
-          security audits, vulnerabilities may exist. Users acknowledge all risks including complete loss of funds
-          due to smart contract failures, exploits, or bugs.
-        </p>
-        <p>
-          <strong className="text-cyan-300">3.3 No guarantees:</strong> We provide the Service &quot;AS IS&quot; and &quot;AS AVAILABLE&quot; without
-          warranties of any kind, express or implied, including but not limited to warranties of merchantability,
-          fitness for a particular purpose, or non-infringement.
-        </p>
-        <p>
-          <strong className="text-cyan-300">3.4 Blockchain risks:</strong> Blockchain networks may experience congestion, delays,
-          forks, or failures. We are not responsible for any losses resulting from blockchain-related issues.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "responsibilities",
-    title: "4. User Responsibilities",
-    body: (
-      <>
-        <p>
-          <strong className="text-cyan-300">4.1 Wallet security:</strong> You are solely responsible for securing your private keys, seed
-          phrases, and wallet credentials. Loss of these credentials may result in permanent loss of access to your
-          assets.
-        </p>
-        <p>
-          <strong className="text-cyan-300">4.2 Transaction verification:</strong> You must verify all transaction details including
-          recipient addresses, amounts, fees, and network selections before confirming any transaction. All
-          blockchain transactions are irreversible.
+          You are solely responsible for safeguarding the private keys, seed phrases, passcodes, or any credentials associated with
+          your wallet. Loss of these credentials may result in permanent loss of access to your assets.
         </p>
         <div>
           <p>
-            <strong className="text-cyan-300">4.3 Prohibited activities:</strong> You agree not to:
+            When you sign a transaction or message through the Service, you authorize the associated operations on the respective
+            blockchain network(s). All blockchain transactions are final and irreversible.
           </p>
-          <ul className="list-disc list-inside space-y-2 pl-4">
-            <li>Use the Service for any illegal activities including money laundering or terrorist financing</li>
-            <li>Attempt to exploit, attack, or interfere with the Service or smart contracts</li>
-            <li>Use the Service to violate any applicable laws or regulations</li>
-            <li>Impersonate any person or entity or misrepresent your affiliation</li>
-            <li>Use automated tools to access the Service without authorization</li>
-          </ul>
         </div>
+      </>
+    ),
+  },
+  {
+    id: "usage",
+    title: "4. Bridge Usage",
+    body: (
+      <>
         <p>
-          <strong className="text-cyan-300">4.4 Tax obligations:</strong> You are solely responsible for determining and paying all
-          applicable taxes related to your use of the Service.
+          The Service enables the submission of encrypted payloads to smart contracts that govern cross-chain asset transfers.
+          Interaction with the Service occurs directly between you and the relevant blockchain(s).
+        </p>
+        <p>
+          You understand and accept that:
+        </p>
+        <ul className="list-disc list-inside space-y-2 pl-4">
+          <li>Smart contracts may fail, be exploited, or behave unexpectedly.</li>
+          <li>Transactions can be front-run, delayed, reversed, or lost.</li>
+          <li>Third-party dependencies (oracles, RPC nodes, liquidity providers) may fail or operate with bugs.</li>
+          <li>Your funds may be irretrievable if private keys are compromised or if the destination wallet is incorrect.</li>
+        </ul>
+        <p>
+          You are solely responsible for verifying all transaction details, including destination addresses, token amounts, fees,
+          network selection, and payload contents before submission.
         </p>
       </>
     ),
   },
   {
     id: "fees",
-    title: "5. Fees and Costs",
+    title: "5. Fees and Taxes",
     body: (
       <>
         <p>
-          <strong className="text-cyan-300">5.1 Bridge fees:</strong> The Service charges bridge fees as displayed in the interface. Fees
-          are subject to change without notice.
+          Lunarys may charge protocol fees that are displayed in the interface at the time of the transaction. Fees may change at any
+          time without prior notice.
         </p>
         <p>
-          <strong className="text-cyan-300">5.2 Network fees:</strong> Users are responsible for all blockchain network fees (gas fees)
-          required to execute transactions.
+          You are responsible for all blockchain network fees (gas fees) and any third-party charges imposed by wallet providers,
+          liquidity venues, or infrastructure partners.
         </p>
         <p>
-          <strong className="text-cyan-300">5.3 Third-party fees:</strong> Additional fees may be charged by third-party services
-          including wallet providers, liquidity providers, or RPC providers.
+          You are solely responsible for determining, reporting, and paying any taxes, duties, or similar governmental assessments
+          associated with your use of the Service.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "prohibited",
+    title: "6. Prohibited Conduct",
+    body: (
+      <>
+        <p>
+          You agree not to:
+        </p>
+        <ul className="list-disc list-inside space-y-2 pl-4">
+          <li>Use the Service to violate any applicable law, regulation, or third-party rights.</li>
+          <li>Use the Service for money laundering, terrorist financing, fraud, or other illicit purposes.</li>
+          <li>Probe, scan, or test the vulnerability of any system or network or breach any security or authentication measure.</li>
+          <li>Interfere with or disrupt the Service, including distributing malware or launching denial-of-service attacks.</li>
+          <li>Use automated scripts or bots without our prior written consent.</li>
+          <li>Impersonate any person or misrepresent your affiliation with any person or entity.</li>
+        </ul>
+        <p>
+          We reserve the right to investigate and cooperate with law enforcement regarding any violations.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "disclaimer",
+    title: "7. Disclaimer of Warranties",
+    body: (
+      <>
+        <p>
+          THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT ANY WARRANTIES OF ANY KIND, WHETHER EXPRESS,
+          IMPLIED, OR STATUTORY. WITHOUT LIMITING THE FOREGOING, WE SPECIFICALLY DISCLAIM ANY IMPLIED WARRANTIES OF
+          MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, AND ANY WARRANTIES ARISING OUT OF
+          COURSE OF DEALING OR USAGE OF TRADE.
+        </p>
+        <p>
+          We do not warrant that the Service will be uninterrupted, secure, or error-free, or that any defects will be corrected.
+          No advice or information obtained from us creates any warranty.
         </p>
       </>
     ),
   },
   {
     id: "liability",
-    title: "6. Limitation of Liability",
+    title: "8. Limitation of Liability",
     body: (
       <>
         <p>
@@ -167,7 +195,7 @@ const sections: Section[] = [
   },
   {
     id: "indemnification",
-    title: "7. Indemnification",
+    title: "9. Indemnification",
     body: (
       <p>
         You agree to indemnify, defend, and hold harmless Lunarys and its affiliates, officers, directors,
@@ -179,27 +207,23 @@ const sections: Section[] = [
   },
   {
     id: "privacy",
-    title: "8. Privacy and Data",
+    title: "10. Privacy",
     body: (
       <>
         <p>
-          <strong className="text-cyan-300">8.1 Zero-knowledge privacy:</strong> While we implement zero-knowledge technology to protect
-          transaction privacy, all blockchain transactions are publicly visible on-chain.
+          Lunarys does not collect personal data beyond technical information necessary to operate the Service. However, blockchain
+          transactions are public and permanently recorded on-chain.
         </p>
         <p>
-          <strong className="text-cyan-300">8.2 No data collection:</strong> We do not collect, store, or process personal data beyond what is
-          necessary for Service functionality.
-        </p>
-        <p>
-          <strong className="text-cyan-300">8.3 Blockchain data:</strong> By using the Service, you acknowledge that transaction data is
-          recorded on public blockchains and may be permanently stored and accessible.
+          For a detailed description of how we handle data, please review the Lunarys Privacy Notice. Where a conflict exists between
+          this section and the Privacy Notice, the Privacy Notice controls.
         </p>
       </>
     ),
   },
   {
     id: "ip",
-    title: "9. Intellectual Property",
+    title: "11. Intellectual Property",
     body: (
       <p>
         All intellectual property rights in the Service, including software, designs, graphics, and content, are owned
@@ -209,100 +233,40 @@ const sections: Section[] = [
     ),
   },
   {
-    id: "modifications",
-    title: "10. Modifications and Termination",
+    id: "changes",
+    title: "12. Changes and Termination",
     body: (
       <>
         <p>
-          <strong className="text-cyan-300">10.1 Service changes:</strong> We reserve the right to modify, suspend, or discontinue the
-          Service at any time without notice or liability.
+          We may modify or discontinue any part of the Service at any time without notice. We may also modify these Terms at any
+          time. Updated Terms become effective upon posting, and your continued use of the Service constitutes acceptance.
         </p>
         <p>
-          <strong className="text-cyan-300">10.2 Terms updates:</strong> We may update these Terms at any time. Continued use of the Service
-          constitutes acceptance of updated Terms.
-        </p>
-        <p>
-          <strong className="text-cyan-300">10.3 Termination:</strong> We may terminate or suspend your access to the Service immediately,
-          without notice, for any reason including violation of these Terms.
+          We may suspend or terminate your access to the Service at any time for any reason, including a suspected breach of these
+          Terms.
         </p>
       </>
     ),
   },
   {
-    id: "disputes",
-    title: "11. Dispute Resolution",
+    id: "law",
+    title: "13. Governing Law and Disputes",
     body: (
       <>
         <p>
-          <strong className="text-cyan-300">11.1 Governing law:</strong> These Terms shall be governed by and construed in accordance with the
-          laws of Switzerland, without regard to conflict of law principles.
+          These Terms are governed by the laws of Switzerland, excluding its conflicts of law principles.
         </p>
         <p>
-          <strong className="text-cyan-300">11.2 Arbitration:</strong> Any dispute arising from these Terms or the Service shall be resolved
-          through binding arbitration in accordance with Swiss arbitration rules.
-        </p>
-        <p>
-          <strong className="text-cyan-300">11.3 Class action waiver:</strong> You agree to bring claims only in your individual capacity and not as
-          part of any class or representative action.
+          Any dispute arising out of or relating to these Terms or the Service shall be resolved through binding arbitration
+          administered in Switzerland, in accordance with the Swiss Rules of International Arbitration. You waive any right to a jury
+          trial or to participate in a class action.
         </p>
       </>
-    ),
-  },
-  {
-    id: "compliance",
-    title: "12. Regulatory Compliance",
-    body: (
-      <>
-        <p>
-          <strong className="text-cyan-300">12.1 No financial advice:</strong> The Service does not provide financial, investment, legal, or tax
-          advice. You should consult appropriate professionals before using the Service.
-        </p>
-        <p>
-          <strong className="text-cyan-300">12.2 No securities:</strong> Nothing on the Service constitutes an offer to sell or solicitation of an
-          offer to buy any securities or regulated financial instruments.
-        </p>
-        <p>
-          <strong className="text-cyan-300">12.3 AML/KYC:</strong> We reserve the right to implement anti-money laundering (AML) and know-your-customer
-          (KYC) procedures at any time and may block transactions that appear suspicious.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "force-majeure",
-    title: "13. Force Majeure",
-    body: (
-      <p>
-        We shall not be liable for any failure or delay in performance due to circumstances beyond our reasonable control,
-        including but not limited to acts of God, war, terrorism, riots, embargoes, acts of civil or military authorities,
-        fire, floods, accidents, network infrastructure failures, strikes, or shortages of transportation facilities, fuel,
-        energy, labor, or materials.
-      </p>
-    ),
-  },
-  {
-    id: "severability",
-    title: "14. Severability",
-    body: (
-      <p>
-        If any provision of these Terms is found to be invalid, illegal, or unenforceable, the remaining provisions shall
-        continue in full force and effect.
-      </p>
-    ),
-  },
-  {
-    id: "entire-agreement",
-    title: "15. Entire Agreement",
-    body: (
-      <p>
-        These Terms constitute the entire agreement between you and Lunarys regarding the Service and supersede all prior
-        agreements and understandings, whether written or oral.
-      </p>
     ),
   },
   {
     id: "contact",
-    title: "16. Contact Information",
+    title: "14. Contact",
     body: (
       <p>
         For questions about these Terms, please contact us at:
@@ -315,7 +279,7 @@ const sections: Section[] = [
   },
 ];
 
-const lastUpdated = "October 5, 2025";
+const lastUpdated = "October 9, 2025";
 
 export default function TermsPage() {
   return (
@@ -336,8 +300,8 @@ export default function TermsPage() {
               Last updated • {lastUpdated}
             </p>
             <p className="mx-auto max-w-3xl text-lg text-gray-300">
-              These Terms outline the rules of engagement when interacting with the Lunarys protocol. Read them carefully
-              before initiating or completing any bridge transaction.
+              Review these Terms before initiating transactions through Lunarys Bridge. They explain what you can expect from us,
+              what we expect from you, and how we handle disputes.
             </p>
           </div>
 
@@ -349,7 +313,7 @@ export default function TermsPage() {
                     <ScrollText className="h-4 w-4" /> Table of contents
                   </div>
                   <p className="text-xs text-gray-400">
-                    Jump to any section or download the latest signed PDF from our legal archive.
+                    Jump directly to a section or skim the highlights before reading the full agreement.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">

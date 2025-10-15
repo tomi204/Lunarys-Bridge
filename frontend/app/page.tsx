@@ -18,7 +18,6 @@ import {
   Zap,
 } from "lucide-react";
 
-import { ConstellationBackground } from "@/components/constellation-background";
 import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -169,11 +168,10 @@ const teamMembers = [
 export default function Home() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
-      <SplashCursor />
-      <ConstellationBackground
-        className="z-0"
-        maxLineDistance={190}
-        particleCount={220}
+      <SplashCursor
+        SPLAT_FORCE={120}
+        SPLAT_RADIUS={0.03}
+        COLOR_UPDATE_SPEED={1.5}
       />
 
       <div className="absolute -top-56 left-[10%] h-[520px] w-[520px] rounded-full bg-cyan-500/20 blur-[160px]" />
@@ -226,7 +224,7 @@ export default function Home() {
                 </Link>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-3">
+              {/* <div className="grid gap-6 sm:grid-cols-3">
                 {launchMetrics.map((metric) => (
                   <div
                     key={metric.label}
@@ -243,7 +241,7 @@ export default function Home() {
                     </p>
                   </div>
                 ))}
-              </div>
+              </div> */}
             </div>
 
             <div className="relative">
