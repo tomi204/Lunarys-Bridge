@@ -34,7 +34,7 @@ export class TokenMappingService implements OnModuleInit {
     const solUsdc = (this.config.get('solUsdcAddress') || '').trim();
 
     // Sensible defaults for Sepolia if envs are missing
-    const SEPOLIA_DEFAULT_EVM = '0x1c7d4b196cb0c7b01d743fbc6116a902379c7238';
+    const SEPOLIA_DEFAULT_EVM = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
     const SEPOLIA_DEFAULT_SOL = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 
     // Build the mapping table just like the old static file

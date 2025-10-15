@@ -5,7 +5,7 @@ export type TokenInfo = {
 };
 
 // Defaults (USDC devnet: 6 decimals)
-const EVM = (process.env.TOKEN_USDC ?? '0xF7F556c59fD417f195ABcd8804e43cfc6714aBF8').toLowerCase();
+const EVM = (process.env.TOKEN_USDC ?? '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238').toLowerCase();
 const MINT = process.env.TOKEN_SOL ?? '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const EVM_DEC = Number(process.env.TOKEN_USDC_EVM_DECIMALS ?? 6);
 const SOL_DEC = Number(process.env.TOKEN_USDC_SOL_DECIMALS ?? 6);
