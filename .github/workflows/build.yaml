@@ -3,8 +3,8 @@ env:
   IMAGE_TAG_NODE: ghcr.io/tomi204/lunarys-bridge/node
   IMAGE_TAG_RELAYER: ghcr.io/tomi204/lunarys-bridge/relayer
 
-  IMAGE_VERSION: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
-  NEXT_PUBLIC_ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+  IMAGE_VERSION: ${{ github.ref == 'refs/heads/main' && 'latest' || 'staging' }}
+  NEXT_PUBLIC_ENVIRONMENT: ${{ github.ref == 'refs/heads/main' && 'latest' || 'staging' }}
 
 on:
   push:
