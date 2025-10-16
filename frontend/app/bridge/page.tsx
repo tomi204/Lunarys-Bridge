@@ -26,6 +26,8 @@ import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 import { NEW_RELAYER_ABI } from "@/abi/newRelayer";
 import { ERC20_ABI } from "@/abi/erc20";
 import { getTokenConfig } from "@/config/tokens";
+import { toast } from "sonner";
+import { decodeBySelector, prettyBridgeError } from "@/lib/evm-error";
 
 // Token Logo Components
 const EthereumLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
@@ -333,28 +335,29 @@ export default function BridgePage() {
       const payload = await encryptSolanaDestination(destinationAddress);
       const tokenConfig = activeTokenConfig;
       if (!tokenConfig) {
-        throw new Error(
+        return toast.error(
           `Token ${selectedToken} is not configured for this network.`
         );
       }
 
       const sanitizedAmount = amount && amount.trim().length > 0 ? amount : "0";
       let parsedAmount: bigint;
+
       try {
         parsedAmount = ethers.parseUnits(sanitizedAmount, tokenConfig.decimals);
       } catch {
-        throw new Error("Invalid amount for the selected token.");
+        return toast.error("Invalid amount for the selected token");
       }
       if (parsedAmount <= BigInt(0)) {
         throw new Error("Amount must be greater than zero");
       }
 
       if (!newRelayerAddress) {
-        throw new Error("Missing NewRelayer contract address.");
+        return toast.error("NewRelayer contract address not found");
       }
 
       if (!account) {
-        throw new Error("EVM account not detected.");
+        return toast.error("No connected EVM account detected");
       }
       const signerInstance = signer as ethers.Signer;
       const ownerAddress = account as `0x${string}`;
@@ -393,12 +396,10 @@ export default function BridgePage() {
       await tx.wait();
       setSuccessMessage("Bridge submitted. Your transaction is on its way.");
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred while starting the bridge.";
-      setEncryptionError(message);
-      setSuccessMessage(null);
+      const decoded = decodeBySelector(error);
+      const nice = prettyBridgeError(decoded);
+      toast.error(nice);
+      setEncryptionError(nice);
     } finally {
       setIsLoading(false);
     }
@@ -475,7 +476,7 @@ export default function BridgePage() {
       </header>
 
       <main className="relative z-10 px-6 pb-24">
-        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 pt-16 text-center">
+        <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 pt-12 text-center">
           <div className="flex flex-col items-center gap-3">
             <Badge className="bg-white/10 text-cyan-200">Bridge cockpit</Badge>
             <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -484,7 +485,7 @@ export default function BridgePage() {
           </div>
 
           <Card className="w-full border-white/10 bg-white/5 shadow-[0_45px_140px_-80px_rgba(56,226,255,0.8)]">
-            <CardContent className="space-y-8 p-8">
+            <CardContent className="space-y-8 p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
                 <div className="space-y-6 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between">

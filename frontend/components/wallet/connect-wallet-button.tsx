@@ -61,15 +61,15 @@ export function ConnectWalletButton({
     <>
       <Button
         className={cn(
-          "bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 px-6 py-5 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)]",
+          "bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 cursor-pointer px-4 py-6 mx-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)]",
           className
         )}
         onClick={() => setIsModalOpen(true)}
       >
-        <span className="flex flex-col items-start leading-tight">
+        <span className="flex flex-col items-center leading-tight">
           <span>{label}</span>
           {subtitle ? (
-            <span className="text-xs font-normal text-black/60">{subtitle}</span>
+            <span className="text-xs justify font-normal text-black/60">{subtitle}</span>
           ) : null}
         </span>
       </Button>
@@ -79,7 +79,7 @@ export function ConnectWalletButton({
           <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-[#070A1D]/95 p-8 text-white shadow-2xl">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute right-4 top-4 rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:bg-white/20"
+              className="absolute right-4 top-4 rounded-full bg-white/10 cursor-pointer px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/70 transition hover:bg-white/20"
             >
               Close
             </button>
@@ -111,7 +111,7 @@ export function ConnectWalletButton({
                 onClick={() => handleSelect(connectEvm)}
                 disabled={isBusy}
                 className={cn(
-                  "group relative overflow-hidden rounded-2xl border p-5 text-left transition",
+                  "group relative overflow-hidden rounded-2xl border p-5 text-left transition cursor-pointer",
                   isEvmConnected
                     ? "border-cyan-400/60 bg-cyan-400/10 shadow-[0_20px_60px_-40px_rgba(56,226,255,0.8)]"
                     : "border-white/10 bg-white/5 hover:border-cyan-400/60",
@@ -154,7 +154,7 @@ export function ConnectWalletButton({
                 onClick={() => handleSelect(connectSolana)}
                 disabled={isBusy}
                 className={cn(
-                  "group relative overflow-hidden rounded-2xl border p-5 text-left transition",
+                  "group relative overflow-hidden rounded-2xl border p-5 text-left transition cursor-pointer",
                   isSolanaConnected
                     ? "border-violet-400/60 bg-violet-500/10 shadow-[0_20px_60px_-45px_rgba(139,92,246,0.8)]"
                     : "border-white/10 bg-white/5 hover:border-violet-400/60",

@@ -1,5 +1,7 @@
+import { RELAYER_ADDR } from "@/lib/constants";
+
 export const NEW_RELAYER_ADDRESSES: Record<number, `0x${string}`> = {
-  11155111: "0x80A4aC24C022cCCe157F59E63EF7A7abf644e515",
+  11155111: RELAYER_ADDR as `0x${string}`,
 };
 
 export const DEFAULT_CHAIN_ID = 11155111;

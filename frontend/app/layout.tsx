@@ -5,6 +5,7 @@ import { AppKit } from "./reown";
 import { ReownEthersSignerProvider } from "@/hooks/useReownEthersSigner";
 import { SolanaWalletProvider } from "@/hooks/useReownSolanaWallet";
 import { FhevmBridgeProvider } from "@/providers/fhevm-bridge-provider";
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,7 +60,10 @@ export default function RootLayout({
         <AppKit>
           <ReownEthersSignerProvider>
             <SolanaWalletProvider>
-              <FhevmBridgeProvider>{children}</FhevmBridgeProvider>
+              <FhevmBridgeProvider>
+                {children}
+                <Toaster richColors position="top-center" />
+              </FhevmBridgeProvider>
             </SolanaWalletProvider>
           </ReownEthersSignerProvider>
         </AppKit>

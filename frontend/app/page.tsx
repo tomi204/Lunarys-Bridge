@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LampContainer } from "@/components/ui/lamp";
 import { SplashCursor } from "@/components/ui/splash-cursor";
+import { Header } from "@/components/header";
 
 type Feature = {
   title: string;
@@ -177,61 +178,8 @@ export default function Home() {
       <div className="absolute top-[40%] right-[-10%] h-[440px] w-[440px] rounded-full bg-indigo-500/25 blur-[160px]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(56,226,255,0.12),transparent_55%)]" />
 
-      <header className="relative z-20">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-8">
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/iso-logo.svg"
-              alt="Lunarys logo"
-              width={36}
-              height={36}
-              className="h-9 w-9 animate-spin-slow"
-              priority
-            />
-            <span className="text-2xl font-semibold tracking-tight">
-              Lunarys
-            </span>
-          </Link>
-          <nav className="hidden items-center gap-10 rounded-full border border-white/5 bg-white/5 px-6 py-2 backdrop-blur-xl md:flex">
-            <Link
-              href="#experience"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
-              Experience
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
-              Flow
-            </Link>
-            <Link
-              href="#docs"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
-              Docs
-            </Link>
-            <Link
-              href="#team"
-              className="text-sm font-medium text-gray-200 transition-colors hover:text-white"
-            >
-              Team
-            </Link>
-          </nav>
-          <div className="flex items-center gap-3">
-            <Badge className="hidden bg-white/10 text-xs uppercase tracking-wide text-white md:inline-flex">
-              Private Beta
-            </Badge>
-            <Link href="/bridge">
-              <Button className="group bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 px-6 py-5 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] transition-transform hover:scale-105">
-                Launch App
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
 
+      <Header />
       <main className="relative z-10">
         <section className="px-6 pb-28 pt-12">
           <div className="mx-auto grid max-w-7xl items-center gap-16 xl:grid-cols-[1.1fr_0.9fr]">
@@ -260,7 +208,7 @@ export default function Home() {
 
               <div className="flex flex-wrap items-center gap-4">
                 <Link href="/bridge">
-                  <Button className="group bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 px-8 py-6 text-base font-semibold text-black shadow-[0_0_45px_rgba(56,226,255,0.45)] transition-transform hover:-translate-y-0.5">
+                  <Button className="group bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 cursor-pointer px-8 py-6 text-base font-semibold text-black shadow-[0_0_45px_rgba(56,226,255,0.45)] transition-transform hover:-translate-y-0.5">
                     Start bridging now
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1.5" />
                   </Button>
@@ -268,7 +216,7 @@ export default function Home() {
                 <Link href="#docs">
                   <Button
                     variant="outline"
-                    className="border-white/20 bg-white/5 px-8 py-6 text-base font-semibold text-white backdrop-blur transition-colors hover:border-white/40 hover:bg-white/10"
+                    className="border-white/20 bg-white/5 cursor-pointer px-8 py-6 text-base font-semibold text-white backdrop-blur transition-colors hover:border-white/40 hover:bg-white/10"
                   >
                     Explore docs
                     <ArrowUpRight className="ml-2 h-5 w-5" />

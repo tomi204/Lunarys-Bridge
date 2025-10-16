@@ -2,7 +2,7 @@ import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk/node";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/node";
 import { ethers } from "ethers";
 import bs58 from "bs58";
-import { NodeConfig } from "../types/index.js";
+import { NodeConfig } from 'src/types/node-config';
 import {
   FileStringStorage,
   FhevmDecryptionSignature,

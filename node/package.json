@@ -1,48 +1,48 @@
 {
-  "name": "bridge-node",
+  "name": "node",
   "version": "1.0.0",
-  "type": "module",
-  "description": "Cross-chain bridge node for EVM to Solana transfers with FHE privacy",
-  "main": "dist/index.js",
+  "private": true,
+  "description": "Lunarys Relayer API (NestJS)",
+  "type": "commonjs",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "node --loader ts-node/esm --experimental-specifier-resolution=node src/index.ts",
-    "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit",
+    "start": "nest start",
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "prod": "node dist/main.js",
     "convert-solana-key": "node --loader ts-node/esm --experimental-specifier-resolution=node scripts/convert-solana-key.ts"
   },
-  "ts-node": {
-    "transpileOnly": true,
-    "files": true
-  },
-  "keywords": [
-    "bridge",
-    "solana",
-    "ethereum",
-    "fhe",
-    "privacy",
-    "cross-chain"
-  ],
-  "author": "",
-  "license": "BSD-3-Clause",
   "dependencies": {
+    "@nestjs/common": "^10.4.7",
+    "@nestjs/config": "^3.3.0",
+    "@nestjs/core": "^10.4.7",
+    "@nestjs/event-emitter": "^3.0.1",
+    "@nestjs/platform-express": "^10.4.20",
+    "@nestjs/typeorm": "^11.0.0",
     "@solana/spl-token": "^0.3.8",
     "@solana/web3.js": "^1.87.6",
     "@zama-fhe/relayer-sdk": "^0.2.0",
-    "axios": "^1.6.2",
+    "axios": "^1.7.7",
     "bs58": "^5.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "ethers": "^6.9.0"
+    "ethers": "^6.13.4",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "joi": "^18.0.1",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "sqlite3": "^5.1.7",
+    "typeorm": "^0.3.27"
   },
   "devDependencies": {
-    "@types/bs58": "^4.0.4",
-    "@types/node": "^20.10.4",
+    "@nestjs/cli": "^10.4.5",
+    "@nestjs/schematics": "^10.1.2",
+    "@nestjs/testing": "^10.4.7",
     "ts-node": "^10.9.2",
-    "tsx": "^4.20.6",
-    "typescript": "^5.3.3"
-  },
-  "engines": {
-    "node": ">=20.0.0"
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.6.3"
   }
 }

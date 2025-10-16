@@ -15,6 +15,7 @@ import {
   useAppKitConnection,
   type Provider as SolanaWalletProvider,
 } from "@reown/appkit-adapter-solana/react";
+import { toast } from "sonner";
 
 interface SolanaWalletContextValue {
   address?: string;
@@ -89,6 +90,7 @@ export function SolanaWalletProvider({
 export function useSolanaWallet(): SolanaWalletContextValue {
   const value = useContext(SolanaWalletContext);
   if (!value) {
+    toast.error("useSolanaWallet must be used within <SolanaWalletProvider>");
     throw new Error("useSolanaWallet must be used within <SolanaWalletProvider>");
   }
   return value;
