@@ -501,8 +501,8 @@ export default function BridgePage() {
 
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={fromChain} onValueChange={setFromChain}>
-                      <SelectTrigger className="w-[200px] border-white/10 bg-white/10 px-4 py-3 text-base font-semibold text-white">
-                        <div className="flex items-center gap-2">
+                      <SelectTrigger className="w-[220px] border-white/10 bg-white/10 px-5 py-4 text-base font-semibold text-white">
+                        <div className="flex items-center gap-3">
                           <SelectValue />
                         </div>
                       </SelectTrigger>
@@ -512,13 +512,13 @@ export default function BridgePage() {
                             key={chain.value}
                             value={chain.value}
                             disabled={chain.value === toChain}
-                            className="py-3"
+                            className="py-4 px-3"
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
                               {chain.value.includes("solana") ? (
-                                <SolanaLogo className="w-5 h-5 shrink-0" />
+                                <SolanaLogo className="w-6 h-6 shrink-0" />
                               ) : (
-                                <EthereumLogo className="w-5 h-5 shrink-0" />
+                                <EthereumLogo className="w-6 h-6 shrink-0" />
                               )}
                               <div className="flex flex-col gap-1">
                                 <span className="text-sm font-medium">
@@ -542,21 +542,21 @@ export default function BridgePage() {
                         setEncryptionError(null);
                       }}
                     >
-                      <SelectTrigger className="w-[160px] border-white/10 bg-white/10 px-4 py-3 text-base font-semibold text-white">
-                        <div className="flex items-center gap-2">
-                          {/* <USDCLogo className="w-5 h-5" /> */}
+                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 px-2 py-4 text-base font-semibold text-white">
+                        <div className="flex items-center gap-3">
+                          <USDCLogo className="w-6 h-6 shrink-0" />
                           <SelectValue />
                         </div>
                       </SelectTrigger>
-                      <SelectContent className="bg-[#030712] text-white border-white/10">
+                      <SelectContent className="bg-[#030712] p-3 text-white border-white/10">
                         {tokenOptions.map((token) => (
                           <SelectItem
                             key={token.value}
                             value={token.value}
-                            className="py-3"
+                            className="py-4 px-3"
                           >
-                            <div className="flex items-center gap-3">
-                              <USDCLogo className="w-5 h-5 shrink-0" />
+                            <div className="flex items-center">
+                              {/* <USDCLogo className="w-6 h-6 shrink-0" /> */}
                               <div className="flex flex-col gap-1">
                                 <span className="text-sm font-medium">
                                   {token.label}
@@ -589,13 +589,13 @@ export default function BridgePage() {
                   </div>
 
                   <div className="flex items-center justify-between pt-2">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1.5">
                       <span className="text-xs text-gray-500 uppercase tracking-wider">
                         Balance
                       </span>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         {balance !== null && (
-                          <USDCLogo className="w-4 h-4 opacity-70" />
+                          <USDCLogo className="w-5 h-5 opacity-70" />
                         )}
                         <span className="text-sm font-medium text-gray-300">
                           {isLoadingBalance
@@ -613,7 +613,7 @@ export default function BridgePage() {
                       variant="ghost"
                       onClick={handleMaxClick}
                       disabled={!balance || isLoadingBalance}
-                      className="rounded-lg px-4 py-2 text-sm font-semibold text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="rounded-lg px-5 py-2.5 text-sm font-semibold text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Max
                     </Button>
@@ -646,12 +646,12 @@ export default function BridgePage() {
 
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={toChain} onValueChange={setToChain}>
-                      <SelectTrigger className="w-[200px] border-white/10 bg-white/10 px-4 py-3 text-base font-semibold text-white">
-                        <div className="flex items-center gap-2">
+                      <SelectTrigger className="w-[220px] border-white/10 bg-white/10 px-5 py-4 text-base font-semibold text-white">
+                        <div className="flex items-center gap-3">
                           {/* {toChain.includes("solana") ? (
-                            <SolanaLogo className="w-5 h-5" />
+                            <SolanaLogo className="w-6 h-6 shrink-0" />
                           ) : (
-                            <EthereumLogo className="w-5 h-5" />
+                            <EthereumLogo className="w-6 h-6 shrink-0" />
                           )} */}
                           <SelectValue />
                         </div>
@@ -662,13 +662,13 @@ export default function BridgePage() {
                             key={chain.value}
                             value={chain.value}
                             disabled={chain.value === fromChain}
-                            className="py-3"
+                            className="py-4 px-3"
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-4">
                               {chain.value.includes("solana") ? (
-                                <SolanaLogo className="w-5 h-5 shrink-0" />
+                                <SolanaLogo className="w-6 h-6 shrink-0" />
                               ) : (
-                                <EthereumLogo className="w-5 h-5 shrink-0" />
+                                <EthereumLogo className="w-6 h-6 shrink-0" />
                               )}
                               <div className="flex flex-col gap-1">
                                 <span className="text-sm font-medium">
@@ -684,32 +684,32 @@ export default function BridgePage() {
                       </SelectContent>
                     </Select>
 
-                    <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-gray-300">
-                      <USDCLogo className="w-4 h-4" />
+                    <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-5 py-3.5 text-sm font-medium text-gray-300">
+                      <USDCLogo className="w-5 h-5 shrink-0" />
                       <span>Receive · {selectedToken}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-5">
-                    <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <div className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-6">
+                    <div className="flex items-center justify-between pb-4 border-b border-white/10">
                       <span className="text-sm font-medium text-gray-300">
                         You receive
                       </span>
-                      <div className="flex items-center gap-2">
-                        <USDCLogo className="w-5 h-5" />
+                      <div className="flex items-center gap-2.5">
+                        <USDCLogo className="w-6 h-6" />
                         <span className="text-xl font-semibold text-white">
                           {estimatedReceive} {selectedToken}
                         </span>
                       </div>
                     </div>
 
-                    <div className="space-y-3 text-sm">
+                    <div className="space-y-3.5 text-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400">
                           Protocol fee (0.25%)
                         </span>
-                        <div className="flex items-center gap-1.5">
-                          <USDCLogo className="w-3.5 h-3.5 opacity-60" />
+                        <div className="flex items-center gap-2">
+                          <USDCLogo className="w-4 h-4 opacity-60" />
                           <span className="font-medium text-gray-300">
                             {protocolFee} {selectedToken}
                           </span>
@@ -717,8 +717,8 @@ export default function BridgePage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400">Network fee</span>
-                        <div className="flex items-center gap-1.5">
-                          <USDCLogo className="w-3.5 h-3.5 opacity-60" />
+                        <div className="flex items-center gap-2">
+                          <USDCLogo className="w-4 h-4 opacity-60" />
                           <span className="font-medium text-gray-300">
                             {networkFee} {selectedToken}
                           </span>

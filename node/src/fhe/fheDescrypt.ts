@@ -1,13 +1,13 @@
-import { createInstance, SepoliaConfig } from "@zama-fhe/relayer-sdk/node";
-import type { FhevmInstance } from "@zama-fhe/relayer-sdk/node";
-import { ethers } from "ethers";
-import bs58 from "bs58";
+import { createInstance, SepoliaConfig } from '@zama-fhe/relayer-sdk/node';
+import type { FhevmInstance } from '@zama-fhe/relayer-sdk/node';
+import { ethers } from 'ethers';
+import bs58 from 'bs58';
 import { NodeConfig } from 'src/types/node-config';
 import {
   FileStringStorage,
   FhevmDecryptionSignature,
   GenericStringStorage,
-} from "./fheSignature.js";
+} from './fheSignature.js';
 
 export class FHEDecryptor {
   private fhevmInstance: FhevmInstance | null = null;
@@ -21,7 +21,7 @@ export class FHEDecryptor {
   constructor(
     config: NodeConfig,
     provider: ethers.Provider,
-    wallet: ethers.Wallet
+    wallet: ethers.Wallet,
   ) {
     this.config = config;
     this.provider = provider;
@@ -33,25 +33,29 @@ export class FHEDecryptor {
    * Initialize the FHE instance for decryption
    */
   async initialize(): Promise<void> {
-    console.log("Initializing FHE instance with @zama-fhe/relayer-sdk...");
+    console.log('Initializing FHE instance with @zama-fhe/relayer-sdk...');
 
     try {
       // Create a timeout promise
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("FHE initialization timeout after 30 seconds")), 30000);
+        setTimeout(
+          () =>
+            reject(new Error('FHE initialization timeout after 30 seconds')),
+          30000,
+        );
       });
 
       // Use SepoliaConfig if chainId matches, otherwise use custom config
       let initPromise: Promise<FhevmInstance>;
       if (this.config.fhevmChainId === 11155111) {
-        console.log("Using SepoliaConfig preset...");
+        console.log('Using SepoliaConfig preset...');
         initPromise = createInstance({
           ...SepoliaConfig,
           network: this.config.ethereumRpcUrl,
         });
       } else {
         // Custom config for other networks
-        console.log("Using custom network config...");
+        console.log('Using custom network config...');
         initPromise = createInstance({
           aclContractAddress: this.config.fhevmAclAddress,
           kmsContractAddress: this.config.fhevmKmsVerifierAddress,
@@ -59,13 +63,13 @@ export class FHEDecryptor {
           network: this.config.ethereumRpcUrl,
           // These are required by the SDK - use Sepolia values as defaults
           inputVerifierContractAddress:
-            "0xbc91f3daD1A5F19F8390c400196e58073B6a0BC4",
+            '0xbc91f3daD1A5F19F8390c400196e58073B6a0BC4',
           verifyingContractAddressDecryption:
-            "0xb6E160B1ff80D67Bfe90A85eE06Ce0A2613607D1",
+            '0xb6E160B1ff80D67Bfe90A85eE06Ce0A2613607D1',
           verifyingContractAddressInputVerification:
-            "0x7048C39f048125eDa9d678AEbaDfB22F7900a29F",
+            '0x7048C39f048125eDa9d678AEbaDfB22F7900a29F',
           gatewayChainId: 55815,
-          relayerUrl: "https://relayer.testnet.zama.cloud",
+          relayerUrl: 'https://relayer.testnet.zama.cloud',
         });
       }
 
@@ -79,18 +83,16 @@ export class FHEDecryptor {
       this.keypair = this.fhevmInstance.generateKeypair();
       this.signatureCache.clear();
 
-      console.log("✓ FHE instance initialized successfully");
+      console.log('✓ FHE instance initialized successfully');
       console.log(`✓ Generated keypair for decryption`);
       if (this.signatureStorage instanceof FileStringStorage) {
-        console.log(
-          `FHE signature cache: ${this.signatureStorage.location}`
-        );
+        console.log(`FHE signature cache: ${this.signatureStorage.location}`);
       }
     } catch (error) {
-      console.error("Failed to initialize FHE instance:", error);
-      console.log("\n⚠️  FHE decryption will not be available");
-      console.log("The node can still run but will skip decryption step");
-      console.log("For testing, you can set a hardcoded destination address\n");
+      console.error('Failed to initialize FHE instance:', error);
+      console.log('\n⚠️  FHE decryption will not be available');
+      console.log('The node can still run but will skip decryption step');
+      console.log('For testing, you can set a hardcoded destination address\n');
       // Don't throw - allow the node to continue without FHE
     }
   }
@@ -103,10 +105,10 @@ export class FHEDecryptor {
    */
   async decryptSolanaAddress(
     requestId: bigint,
-    newRelayerAddress: string
+    newRelayerAddress: string,
   ): Promise<string> {
     if (!this.fhevmInstance) {
-      throw new Error("FHE instance not initialized. Call initialize() first.");
+      throw new Error('FHE instance not initialized. Call initialize() first.');
     }
 
     try {
@@ -115,20 +117,20 @@ export class FHEDecryptor {
       // ABI for NewRelayer contract
       // Note: euint256 is stored as uint256 in the ABI but represents an FHE handle
       const newRelayerAbi = [
-        "function bridgeRequests(uint256) view returns (address sender, address token, uint256 amount, uint256 encryptedSolanaDestination, uint256 timestamp, bool finalized, uint256 fee)",
+        'function bridgeRequests(uint256) view returns (address sender, address token, uint256 amount, uint256 encryptedSolanaDestination, uint256 timestamp, bool finalized, uint256 fee)',
       ];
 
       const newRelayer = new ethers.Contract(
         newRelayerAddress,
         newRelayerAbi,
-        this.provider
+        this.provider,
       );
 
       // Get the bridge request from the contract
-      console.log("Fetching bridge request from contract...");
+      console.log('Fetching bridge request from contract...');
       const bridgeRequest = await newRelayer.bridgeRequests(requestId);
 
-      console.log("Raw bridge request:", bridgeRequest);
+      console.log('Raw bridge request:', bridgeRequest);
 
       // Extract the encrypted handle (euint256)
       // In Solidity storage, euint256 is stored as a uint256 handle ID
@@ -136,7 +138,9 @@ export class FHEDecryptor {
 
       console.log(`Encrypted handle obtained: ${encryptedHandle}`);
       console.log(`Encrypted handle type: ${typeof encryptedHandle}`);
-      console.log(`Encrypted handle hex: ${typeof encryptedHandle === 'bigint' ? '0x' + encryptedHandle.toString(16) : encryptedHandle.toString()}`);
+      console.log(
+        `Encrypted handle hex: ${typeof encryptedHandle === 'bigint' ? '0x' + encryptedHandle.toString(16) : encryptedHandle.toString()}`,
+      );
 
       const normalizedContract = ethers.getAddress(newRelayerAddress);
       const signatureBundle = await this.ensureDecryptionSignature([
@@ -144,11 +148,11 @@ export class FHEDecryptor {
       ]);
 
       console.log(
-        `Using signer ${signatureBundle.userAddress} with cached FHE key`
+        `Using signer ${signatureBundle.userAddress} with cached FHE key`,
       );
 
-      // Request decryption from the Zama Gateway
-      console.log("Requesting decryption from Zama Gateway...");
+      // Request decryption
+      console.log('Requesting decryption');
 
       // The handle is stored directly as uint256 in the contract
       const handleToDecrypt: bigint = BigInt(encryptedHandle.toString());
@@ -157,7 +161,7 @@ export class FHEDecryptor {
 
       // Convert handle to hex string with exactly 66 characters (0x + 64 hex chars)
       // The SDK expects handles to be in hex format with length 66
-      const handleHex = "0x" + handleToDecrypt.toString(16).padStart(64, "0");
+      const handleHex = '0x' + handleToDecrypt.toString(16).padStart(64, '0');
 
       console.log(`Handle in hex format: ${handleHex}`);
       console.log(`Handle hex length: ${handleHex.length}`);
@@ -170,7 +174,7 @@ export class FHEDecryptor {
         },
       ];
 
-      console.log("Calling userDecrypt with Zama Gateway...");
+      console.log('Calling userDecrypt');
       const startTimestamp = signatureBundle.startTimestamp.toString();
       const durationDays = signatureBundle.durationDays.toString();
 
@@ -183,14 +187,14 @@ export class FHEDecryptor {
         signatureBundle.contractAddresses,
         signatureBundle.userAddress,
         startTimestamp,
-        durationDays
+        durationDays,
       );
 
       // Result is an object where key is the handle
       const decryptedValue = result[handleHex];
 
       if (!decryptedValue) {
-        throw new Error("Decryption failed: No result for handle");
+        throw new Error('Decryption failed: No result for handle');
       }
 
       console.log(`Decrypted value (uint256): ${decryptedValue}`);
@@ -201,11 +205,11 @@ export class FHEDecryptor {
 
       return solanaAddress;
     } catch (error) {
-      console.error("Error decrypting Solana address:", error);
+      console.error('Error decrypting Solana address:', error);
       if (error instanceof Error) {
-        console.error("Error details:", error.message);
-        if ("cause" in error) {
-          console.error("Error cause:", error.cause);
+        console.error('Error details:', error.message);
+        if ('cause' in error) {
+          console.error('Error cause:', error.cause);
         }
       }
       throw error;
@@ -216,25 +220,25 @@ export class FHEDecryptor {
     return contractAddresses
       .map((address) => ethers.getAddress(address))
       .sort((a, b) => a.localeCompare(b))
-      .join("|");
+      .join('|');
   }
 
   private async ensureDecryptionSignature(
-    contractAddresses: string[]
+    contractAddresses: string[],
   ): Promise<FhevmDecryptionSignature> {
     if (!this.fhevmInstance) {
-      throw new Error("FHE instance not initialized. Call initialize() first.");
+      throw new Error('FHE instance not initialized. Call initialize() first.');
     }
 
     const normalized = contractAddresses.map((address) =>
-      ethers.getAddress(address)
+      ethers.getAddress(address),
     );
     const cacheKey = this.getSignatureCacheKey(normalized);
 
     const cached = this.signatureCache.get(cacheKey);
     if (cached) {
       if (cached.isValid()) {
-        console.log("Reusing cached FHE decryption signature");
+        console.log('Reusing cached FHE decryption signature');
         return cached;
       }
       this.signatureCache.delete(cacheKey);
@@ -245,11 +249,11 @@ export class FHEDecryptor {
       normalized,
       this.wallet,
       this.signatureStorage,
-      this.keypair ?? undefined
+      this.keypair ?? undefined,
     );
 
     if (!signature) {
-      throw new Error("Unable to obtain FHE decryption signature");
+      throw new Error('Unable to obtain FHE decryption signature');
     }
 
     this.keypair = {
@@ -257,7 +261,7 @@ export class FHEDecryptor {
       privateKey: signature.privateKey,
     };
 
-    console.log("Signed fresh FHE decryption authorization request");
+    console.log('Signed fresh FHE decryption authorization request');
     this.signatureCache.set(cacheKey, signature);
     return signature;
   }
@@ -283,7 +287,7 @@ export class FHEDecryptor {
    */
   private bigIntToBytes32(value: bigint): Uint8Array {
     // Convert bigint to hex string with 64 characters (32 bytes)
-    const hex = value.toString(16).padStart(64, "0");
+    const hex = value.toString(16).padStart(64, '0');
 
     // Convert hex string to Uint8Array
     const bytes = new Uint8Array(32);

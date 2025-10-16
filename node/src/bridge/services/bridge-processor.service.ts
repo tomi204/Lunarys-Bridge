@@ -13,7 +13,10 @@ import { TokenMappingService } from 'src/bridge/services/token-mappings.service'
 @Injectable()
 export class BridgeProcessorService {
   private readonly logger = new Logger(BridgeProcessorService.name);
-  private readonly status = new Map<string, { status: BridgeStatus; details?: any }>();
+  private readonly status = new Map<
+    string,
+    { status: BridgeStatus; details?: any }
+  >();
 
   private readonly newRelayer: string;
   private readonly chainId: number;
@@ -22,10 +25,10 @@ export class BridgeProcessorService {
   constructor(
     private readonly config: ConfigService<NodeConfig, true>,
     private readonly eth: EthereumMonitorService,
-    private readonly fhe: FheDecryptorService,          // <- usa el decrypt “viejo” por dentro
+    private readonly fhe: FheDecryptorService, // <- usa el decrypt “viejo” por dentro
     private readonly sol: SolanaTransferService,
     private readonly relayerApi: RelayerApiService,
-    private readonly tokens: TokenMappingService,  
+    private readonly tokens: TokenMappingService,
   ) {
     this.newRelayer = this.config.get('newRelayerAddress');
     this.chainId = this.config.get('fhevmChainId');
@@ -40,7 +43,10 @@ export class BridgeProcessorService {
     const id = req.requestId.toString();
 
     try {
-      this.setStatus(id, 'detected', { token: req.token, amountRaw: req.amount.toString() });
+      this.setStatus(id, 'detected', {
+        token: req.token,
+        amountRaw: req.amount.toString(),
+      });
 
       // 1) Claim
       let claimTxHash = '';
@@ -53,20 +59,29 @@ export class BridgeProcessorService {
       }
       this.setStatus(id, 'claimed', { claimTxHash });
 
-      // 2) Decrypt (usa FHE "viejo"; si falla, cae a TEST_SOLANA_DESTINATION)
       let solDest: string;
       let usedFallback = false;
       try {
-        solDest = await this.fhe.decryptSolanaAddress(req.requestId, this.newRelayer);
+        solDest = await this.fhe.decryptSolanaAddress(
+          req.requestId,
+          this.newRelayer,
+        );
       } catch (e: any) {
         if (!this.testSolDest) {
-          throw new Error(`FHE decryption failed and no TEST_SOLANA_DESTINATION configured: ${e?.message ?? e}`);
+          throw new Error(
+            `FHE decryption failed and no TEST_SOLANA_DESTINATION configured: ${e?.message ?? e}`,
+          );
         }
         usedFallback = true;
         solDest = this.testSolDest;
-        this.logger.warn(`FHE decrypt failed for #${id}. Using TEST_SOLANA_DESTINATION=${solDest}`);
+        this.logger.warn(
+          `FHE decrypt failed for #${id}. Using TEST_SOLANA_DESTINATION=${solDest}`,
+        );
       }
-      this.setStatus(id, 'decrypted', { solanaDestination: solDest, fallback: usedFallback });
+      this.setStatus(id, 'decrypted', {
+        solanaDestination: solDest,
+        fallback: usedFallback,
+      });
 
       // 3) Transfer (nativo → SOL, ERC20 → SPL con mapping)
       let signature = '';
@@ -75,20 +90,29 @@ export class BridgeProcessorService {
         signature = res.signature;
       } else {
         const mapping = this.tokens.getTokenMapping(req.token, this.chainId);
-        if (!mapping) throw new Error(`No token mapping for ${req.token} on chainId=${this.chainId}`);
+        if (!mapping)
+          throw new Error(
+            `No token mapping for ${req.token} on chainId=${this.chainId}`,
+          );
 
         // Convertion from decimals to BigInt
         const diff = mapping.decimals.solana - mapping.decimals.evm;
         const converted =
-          diff > 0 ? req.amount * (10n ** BigInt(diff))
-                   : diff < 0 ? req.amount / (10n ** BigInt(-diff))
-                              : req.amount;
+          diff > 0
+            ? req.amount * 10n ** BigInt(diff)
+            : diff < 0
+              ? req.amount / 10n ** BigInt(-diff)
+              : req.amount;
 
-        const res = await this.sol.transferSPLToken(mapping.solanaAddress, solDest, converted);
+        const res = await this.sol.transferSPLToken(
+          mapping.solanaAddress,
+          solDest,
+          converted,
+        );
         signature = res.signature;
 
         this.logger.log(
-          `Amount: ${req.amount.toString()} (EVM ${mapping.decimals.evm}) -> ${converted.toString()} (Solana ${mapping.decimals.solana})`
+          `Amount: ${req.amount.toString()} (EVM ${mapping.decimals.evm}) -> ${converted.toString()} (Solana ${mapping.decimals.solana})`,
         );
       }
       this.setStatus(id, 'transferred', { signature });
@@ -104,12 +128,16 @@ export class BridgeProcessorService {
       });
 
       if (verification.success) {
-        this.setStatus(id, 'verified', { message: verification.message, ethTx: claimTxHash });
+        this.setStatus(id, 'verified', {
+          message: verification.message,
+          ethTx: claimTxHash,
+        });
         this.logger.warn(`Verification submission finished for #${id}`);
       } else {
-        this.logger.warn(`Verification submission failed for #${id}: ${verification.message ?? '(no message)'}`);
+        this.logger.warn(
+          `Verification submission failed for #${id}: ${verification.message ?? '(no message)'}`,
+        );
       }
-
     } catch (e: any) {
       this.logger.error(`Bridge #${id} failed: ${e?.message ?? e}`);
       this.setStatus(id, 'failed', { error: e?.message ?? String(e) });
@@ -117,7 +145,12 @@ export class BridgeProcessorService {
   }
 
   getStatus(id: string) {
-    return this.status.get(id) ?? { status: 'failed' as BridgeStatus, details: { error: 'unknown id' } };
+    return (
+      this.status.get(id) ?? {
+        status: 'failed' as BridgeStatus,
+        details: { error: 'unknown id' },
+      }
+    );
   }
 
   private setStatus(id: string, status: BridgeStatus, details?: any) {
