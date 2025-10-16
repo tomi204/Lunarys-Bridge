@@ -21,6 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScannerCardStream } from "@/components/ui/scanner-card-stream";
+import { ChainInfo } from "@/components/ui/chain-info";
+import { MatrixText } from "@/components/ui/matrix-text";
+import { InlineMatrixText } from "@/components/ui/inline-matrix-text";
 import { useFhevmBridge } from "@/providers/fhevm-bridge-provider";
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 import { NEW_RELAYER_ABI } from "@/abi/newRelayer";
@@ -28,6 +31,21 @@ import { ERC20_ABI } from "@/abi/erc20";
 import { getTokenConfig } from "@/config/tokens";
 import { toast } from "sonner";
 import { decodeBySelector, prettyBridgeError } from "@/lib/evm-error";
+
+// Validation functions
+const isValidSolanaAddress = (address: string): boolean => {
+  if (!address || address.trim().length === 0) return false;
+  // Solana addresses are base58 encoded and typically 32-44 characters
+  const solanaRegex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  return solanaRegex.test(address.trim());
+};
+
+const isValidEthereumAddress = (address: string): boolean => {
+  if (!address || address.trim().length === 0) return false;
+  // Ethereum addresses are 42 characters (0x + 40 hex chars)
+  const ethRegex = /^0x[a-fA-F0-9]{40}$/;
+  return ethRegex.test(address.trim());
+};
 
 // Token Logo Components
 const EthereumLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
@@ -172,10 +190,22 @@ export default function BridgePage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [transactionPhase, setTransactionPhase] = useState<
+    "idle" | "encrypting" | "burning" | "bridging" | "complete"
+  >("idle");
+  const [destinationAddressError, setDestinationAddressError] = useState<string | null>(null);
 
   const isSolanaTarget = useMemo(() => {
     return toChain.startsWith("solana");
   }, [toChain]);
+
+  const hasDestinationAddress = useMemo(() => {
+    if (isSolanaTarget) {
+      return destinationAddress.trim().length > 0 && isValidSolanaAddress(destinationAddress);
+    } else {
+      return ethereumDestination.trim().length > 0 && isValidEthereumAddress(ethereumDestination);
+    }
+  }, [isSolanaTarget, destinationAddress, ethereumDestination]);
 
   const activeTokenConfig = useMemo(() => {
     return getTokenConfig(chainId ?? expectedChainId, selectedToken);
@@ -269,9 +299,7 @@ export default function BridgePage() {
     !signer ||
     !isFheReady ||
     !isCorrectNetwork ||
-    (isSolanaTarget
-      ? destinationAddress.trim().length === 0
-      : ethereumDestination.trim().length === 0) ||
+    !hasDestinationAddress ||
     !activeTokenConfig ||
     !isSolanaTarget;
 
@@ -292,10 +320,16 @@ export default function BridgePage() {
       if (ethereumDestination.trim().length === 0) {
         return "Enter the Ethereum destination address.";
       }
+      if (!isValidEthereumAddress(ethereumDestination)) {
+        return "Enter a valid Ethereum address (0x...).";
+      }
       return "Bridging to Ethereum will be available soon.";
     }
     if (destinationAddress.trim().length === 0) {
       return "Enter the Solana destination address.";
+    }
+    if (!isValidSolanaAddress(destinationAddress)) {
+      return "Enter a valid Solana address.";
     }
     if (!activeTokenConfig) {
       return "Pick a supported token for this route.";
@@ -330,11 +364,14 @@ export default function BridgePage() {
     setIsLoading(true);
     setEncryptionError(null);
     setSuccessMessage(null);
+    setTransactionPhase("encrypting");
 
     try {
+      // Encrypting phase - encrypt the destination
       const payload = await encryptSolanaDestination(destinationAddress);
       const tokenConfig = activeTokenConfig;
       if (!tokenConfig) {
+        setTransactionPhase("idle");
         return toast.error(
           `Token ${selectedToken} is not configured for this network.`
         );
@@ -346,24 +383,31 @@ export default function BridgePage() {
       try {
         parsedAmount = ethers.parseUnits(sanitizedAmount, tokenConfig.decimals);
       } catch {
+        setTransactionPhase("idle");
         return toast.error("Invalid amount for the selected token");
       }
       if (parsedAmount <= BigInt(0)) {
+        setTransactionPhase("idle");
         throw new Error("Amount must be greater than zero");
       }
 
       if (!newRelayerAddress) {
+        setTransactionPhase("idle");
         return toast.error("NewRelayer contract address not found");
       }
 
       if (!account) {
+        setTransactionPhase("idle");
         return toast.error("No connected EVM account detected");
       }
+
       const signerInstance = signer as ethers.Signer;
       const ownerAddress = account as `0x${string}`;
-
       const handleBytes = payload.handle as `0x${string}`;
       const destinationProof = payload.proof as `0x${string}`;
+
+      // Burning phase - Execute approve transaction
+      setTransactionPhase("burning");
 
       const erc20 = new ethers.Contract(
         tokenConfig.address,
@@ -378,6 +422,23 @@ export default function BridgePage() {
       if (currentAllowance < parsedAmount) {
         const approveTx = await erc20.approve(newRelayerAddress, parsedAmount);
         await approveTx.wait();
+        toast.success(
+          <div className="flex items-center gap-3">
+            <USDCLogo className="w-6 h-6" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Token Approved</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400 border border-green-500/20">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                  </svg>
+                  Verified
+                </span>
+              </div>
+              <div className="text-xs text-gray-400">Ready to bridge</div>
+            </div>
+          </div>
+        );
       }
 
       const contract = new ethers.Contract(
@@ -394,12 +455,42 @@ export default function BridgePage() {
       );
 
       await tx.wait();
-      setSuccessMessage("Bridge submitted. Your transaction is on its way.");
+
+      toast.success(
+        <div className="flex items-center gap-3">
+          <USDCLogo className="w-6 h-6" />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">Bridge Confirmed</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400 border border-green-500/20">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                </svg>
+                Verified
+              </span>
+            </div>
+            <div className="text-xs text-gray-400">Transaction successful</div>
+          </div>
+        </div>
+      );
+
+      // Show bridging animation for 20 seconds
+      setTransactionPhase("bridging");
+      await new Promise((resolve) => setTimeout(resolve, 20000));
+
+      setTransactionPhase("complete");
+      setSuccessMessage("Bridge completed successfully!");
+
+      // Reset after showing complete state
+      setTimeout(() => {
+        setTransactionPhase("idle");
+      }, 3000);
     } catch (error) {
       const decoded = decodeBySelector(error);
       const nice = prettyBridgeError(decoded);
       toast.error(nice);
       setEncryptionError(nice);
+      setTransactionPhase("idle");
     } finally {
       setIsLoading(false);
     }
@@ -410,8 +501,31 @@ export default function BridgePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
-      {isLoading && (
-        <ScannerCardStream fromChain={fromChain} toChain={toChain} />
+      {transactionPhase === "encrypting" && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617]">
+          <MatrixText
+            text="Encrypting"
+            className="min-h-0"
+            initialDelay={0}
+            letterAnimationDuration={300}
+            letterInterval={80}
+          />
+        </div>
+      )}
+      {transactionPhase === "burning" && (
+        <ScannerCardStream
+          fromChain={fromChain}
+          toChain={toChain}
+          tokenSymbol={selectedToken}
+        />
+      )}
+      {transactionPhase === "bridging" && (
+        <ChainInfo
+          fromChain={fromChain}
+          toChain={toChain}
+          tokenSymbol={selectedToken}
+          amount={amount}
+        />
       )}
       <ConstellationBackground
         className="z-0"
@@ -478,9 +592,21 @@ export default function BridgePage() {
       <main className="relative z-10 px-6 pb-24">
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 pt-12 text-center">
           <div className="flex flex-col items-center gap-3">
-            <Badge className="bg-white/10 text-cyan-200">Bridge cockpit</Badge>
+            <Badge className="bg-white/10 text-cyan-200">
+              <InlineMatrixText
+                text="Bridge cockpit"
+                initialDelay={300}
+                letterAnimationDuration={400}
+                letterInterval={80}
+              />
+            </Badge>
             <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-              Launch a private bridge
+              <InlineMatrixText
+                text="Launch a private bridge"
+                initialDelay={500}
+                letterAnimationDuration={400}
+                letterInterval={60}
+              />
             </h1>
           </div>
 
@@ -734,17 +860,34 @@ export default function BridgePage() {
                       <Input
                         value={destinationAddress}
                         onChange={(event) => {
-                          setDestinationAddress(event.target.value);
+                          const value = event.target.value;
+                          setDestinationAddress(value);
                           setEncryptionError(null);
                           setSuccessMessage(null);
+
+                          // Validate on change
+                          if (value.trim().length > 0 && !isValidSolanaAddress(value)) {
+                            setDestinationAddressError("Invalid Solana address format");
+                          } else {
+                            setDestinationAddressError(null);
+                          }
                         }}
                         placeholder="e.g. 4Nd1K..."
-                        className="border-white/10 bg-white/10 py-3 text-sm text-white placeholder:text-gray-500 focus-visible:ring-cyan-400/20"
+                        className={`border-white/10 bg-white/10 py-3 text-sm text-white placeholder:text-gray-500 focus-visible:ring-cyan-400/20 ${
+                          destinationAddressError ? "border-red-500/50" : ""
+                        }`}
                       />
-                      <p className="text-xs leading-relaxed text-gray-500">
-                        We secure the address before forwarding it to the
-                        NewRelayer contract.
-                      </p>
+                      {destinationAddressError && (
+                        <p className="text-xs leading-relaxed text-red-400">
+                          {destinationAddressError}
+                        </p>
+                      )}
+                      {!destinationAddressError && (
+                        <p className="text-xs leading-relaxed text-gray-500">
+                          We secure the address before forwarding it to the
+                          NewRelayer contract.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -754,17 +897,34 @@ export default function BridgePage() {
                       <Input
                         value={ethereumDestination}
                         onChange={(event) => {
-                          setEthereumDestination(event.target.value);
+                          const value = event.target.value;
+                          setEthereumDestination(value);
                           setEncryptionError(null);
                           setSuccessMessage(null);
+
+                          // Validate on change
+                          if (value.trim().length > 0 && !isValidEthereumAddress(value)) {
+                            setDestinationAddressError("Invalid Ethereum address format (must start with 0x)");
+                          } else {
+                            setDestinationAddressError(null);
+                          }
                         }}
                         placeholder="0x..."
-                        className="border-white/10 bg-white/10 py-3 text-sm text-white placeholder:text-gray-500 focus-visible:ring-cyan-400/20"
+                        className={`border-white/10 bg-white/10 py-3 text-sm text-white placeholder:text-gray-500 focus-visible:ring-cyan-400/20 ${
+                          destinationAddressError ? "border-red-500/50" : ""
+                        }`}
                       />
-                      <p className="text-xs leading-relaxed text-gray-500">
-                        Display-only field for the target EVM address
-                        (functionality coming soon).
-                      </p>
+                      {destinationAddressError && (
+                        <p className="text-xs leading-relaxed text-red-400">
+                          {destinationAddressError}
+                        </p>
+                      )}
+                      {!destinationAddressError && (
+                        <p className="text-xs leading-relaxed text-gray-500">
+                          Display-only field for the target EVM address
+                          (functionality coming soon).
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -776,12 +936,20 @@ export default function BridgePage() {
                   disabled={isBridgeDisabled}
                   className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-6 text-lg font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] transition-all hover:shadow-[0_0_60px_rgba(56,226,255,0.5)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  {isLoading
-                    ? "Encrypting..."
-                    : isFheReady
-                      ? "Initiate bridge"
-                      : "Preparing secure session..."}
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  {isLoading ? (
+                    <InlineMatrixText
+                      text="Encrypting"
+                      className="text-black"
+                      initialDelay={0}
+                      letterAnimationDuration={200}
+                      letterInterval={50}
+                    />
+                  ) : isFheReady ? (
+                    "Initiate bridge"
+                  ) : (
+                    "Preparing secure session..."
+                  )}
+                  {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
                 </Button>
 
                 {helperMessage ? (

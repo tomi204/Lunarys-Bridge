@@ -4,100 +4,36 @@ import React, {
   useState,
   useEffect,
   useRef,
-  useCallback,
   useMemo,
 } from "react";
 import * as THREE from "three";
 
 // --- Token SVG Components ---
-const EthereumToken = () => (
+const USDCToken = () => (
   <svg
-    viewBox="0 0 256 417"
+    viewBox="0 0 2000 2000"
     xmlns="http://www.w3.org/2000/svg"
     className="w-full h-full"
   >
+    <circle cx="1000" cy="1000" r="1000" fill="#2775CA" />
     <path
-      fill="#343434"
-      d="m127.961 0-2.795 9.5v275.668l2.795 2.79 127.962-75.638z"
-    />
-    <path fill="#8C8C8C" d="M127.962 0 0 212.32l127.962 75.639V154.158z" />
-    <path
-      fill="#3C3C3B"
-      d="m127.961 312.187-1.575 1.92v98.199l1.575 4.6L256 236.587z"
-    />
-    <path fill="#8C8C8C" d="M127.962 416.905v-104.72L0 236.585z" />
-    <path fill="#141414" d="m127.961 287.958 127.96-75.637-127.96-58.162z" />
-    <path fill="#393939" d="m.001 212.321 127.96 75.637V154.159z" />
-  </svg>
-);
-
-const SolanaToken = () => (
-  <svg
-    viewBox="0 0 397.7 311.7"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-full h-full"
-  >
-    <defs>
-      <linearGradient
-        id="solGradient1"
-        x1="360.879"
-        y1="351.455"
-        x2="141.213"
-        y2="-69.294"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#00ffa3" />
-        <stop offset="1" stopColor="#dc1fff" />
-      </linearGradient>
-      <linearGradient
-        id="solGradient2"
-        x1="264.829"
-        y1="401.601"
-        x2="45.163"
-        y2="-19.148"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#00ffa3" />
-        <stop offset="1" stopColor="#dc1fff" />
-      </linearGradient>
-      <linearGradient
-        id="solGradient3"
-        x1="312.548"
-        y1="376.688"
-        x2="92.882"
-        y2="-44.061"
-        gradientUnits="userSpaceOnUse"
-      >
-        <stop offset="0" stopColor="#00ffa3" />
-        <stop offset="1" stopColor="#dc1fff" />
-      </linearGradient>
-    </defs>
-    <path
-      fill="url(#solGradient1)"
-      d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1z"
+      fill="#fff"
+      d="M1275 1158.33c0-145.83-87.5-195.83-262.5-216.66-125-16.67-150-50-150-108.34s41.67-95.83 125-95.83c75 0 116.67 25 137.5 87.5 4.17 12.5 16.67 20.83 29.17 20.83h66.66c16.67 0 29.17-12.5 29.17-29.16v-4.17c-16.67-91.67-91.67-162.5-187.5-170.83v-100c0-16.67-12.5-29.17-33.33-33.34h-62.5c-16.67 0-29.17 12.5-33.34 33.34v95.83c-125 16.67-204.16 100-204.16 204.17 0 137.5 83.33 191.66 258.33 212.5 116.67 20.83 154.17 45.83 154.17 112.5s-58.34 112.5-137.5 112.5c-108.34 0-145.84-45.84-158.34-108.34-4.16-16.66-16.66-25-29.16-25h-70.84c-16.66 0-29.16 12.5-29.16 29.17v4.17c16.66 104.16 83.33 179.16 220.83 200v100c0 16.66 12.5 29.16 33.33 33.33h62.5c16.67 0 29.17-12.5 33.34-33.33v-100c125-20.84 208.33-108.34 208.33-220.84z"
     />
     <path
-      fill="url(#solGradient2)"
-      d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1z"
-    />
-    <path
-      fill="url(#solGradient3)"
-      d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1z"
+      fill="#fff"
+      d="M787.5 1595.83c-325-116.66-491.67-479.16-370.83-800 62.5-175 200-308.33 370.83-370.83 16.67-8.33 25-20.83 25-41.67V325c0-16.67-8.33-29.17-25-33.33-4.17 0-12.5 0-16.67 4.16-395.83 125-612.5 545.84-487.5 941.67 75 233.33 254.17 412.5 487.5 487.5 16.67 8.33 33.34 0 37.5-16.67 4.17-4.16 4.17-8.33 4.17-16.66v-58.34c0-12.5-12.5-29.16-25-37.5zM1229.17 295.83c-16.67-8.33-33.34 0-37.5 16.67-4.17 4.17-4.17 8.33-4.17 16.67v58.33c0 16.67 12.5 33.33 25 41.67 325 116.66 491.67 479.16 370.83 800-62.5 175-200 308.33-370.83 370.83-16.67 8.33-25 20.83-25 41.67V1700c0 16.67 8.33 29.17 25 33.33 4.17 0 12.5 0 16.67-4.16 395.83-125 612.5-545.84 487.5-941.67-75-237.5-258.34-416.67-487.5-491.67z"
     />
   </svg>
 );
 
-// Token images as data URLs for better performance
-const getTokenImages = (fromChain: string, toChain: string) => {
-  const isSolanaSource = fromChain.includes("solana");
-  const isEthSource =
-    fromChain.includes("sepolia") || fromChain.includes("ethereum");
 
-  // Show the source chain token being "burned/scanned"
-  return {
-    tokenType: isSolanaSource ? "solana" : "ethereum",
-    displayName: isSolanaSource ? "SOL" : "ETH",
-  };
+// Get chain display names
+const getChainName = (chain: string) => {
+  if (chain.includes("solana")) return "Solana Devnet";
+  if (chain.includes("sepolia")) return "Sepolia";
+  if (chain.includes("ethereum")) return "Ethereum";
+  return chain;
 };
 
 // --- Helper function to generate ASCII-like code ---
@@ -117,52 +53,44 @@ const generateCode = (width: number, height: number): string => {
 
 // --- Component Props Type Definition ---
 type ScannerCardStreamProps = {
-  showControls?: boolean;
-  showSpeed?: boolean;
   initialSpeed?: number;
   direction?: -1 | 1;
-  cardImages?: string[];
   repeat?: number;
   cardGap?: number;
   friction?: number;
   scanEffect?: "clip" | "scramble";
   fromChain?: string;
   toChain?: string;
+  tokenSymbol?: string;
 };
 
 // --- The Main Component ---
 const ScannerCardStream = ({
-  showControls = false,
-  showSpeed = false,
   initialSpeed = 150,
   direction = -1,
-  cardImages,
   repeat = 8,
   cardGap = 60,
   friction = 0.95,
   scanEffect = "scramble",
   fromChain = "solana-devnet",
   toChain = "sepolia",
+  tokenSymbol = "USDC",
 }: ScannerCardStreamProps) => {
-  // Determine which token to display based on source chain
-  const tokenInfo = useMemo(
-    () => getTokenImages(fromChain, toChain),
-    [fromChain, toChain]
-  );
+  const fromChainName = useMemo(() => getChainName(fromChain), [fromChain]);
+  const toChainName = useMemo(() => getChainName(toChain), [toChain]);
 
-  const [speed, setSpeed] = useState(initialSpeed);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPaused] = useState(false);
   const [isScanning, setIsScanning] = useState(false); // New state for scanner visibility
 
   const cards = useMemo(() => {
     const totalCards = repeat;
     return Array.from({ length: totalCards }, (_, i) => ({
       id: i,
-      tokenType: tokenInfo.tokenType,
-      displayName: tokenInfo.displayName,
+      tokenType: "usdc",
+      displayName: tokenSymbol,
       ascii: generateCode(Math.floor(400 / 6.5), Math.floor(250 / 13)),
     }));
-  }, [repeat, tokenInfo]);
+  }, [repeat, tokenSymbol]);
 
   const cardLineRef = useRef<HTMLDivElement>(null);
   const particleCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -182,20 +110,6 @@ const ScannerCardStream = ({
   });
 
   const scannerState = useRef({ isScanning: false });
-
-  const toggleAnimation = useCallback(() => setIsPaused((prev) => !prev), []);
-  const resetPosition = useCallback(() => {
-    if (cardLineRef.current) {
-      cardStreamState.current.position =
-        cardLineRef.current.parentElement?.offsetWidth || 0;
-      cardStreamState.current.velocity = initialSpeed;
-      cardStreamState.current.direction = direction;
-      setIsPaused(false);
-    }
-  }, [initialSpeed, direction]);
-  const changeDirection = useCallback(() => {
-    cardStreamState.current.direction *= -1;
-  }, []);
 
   useEffect(() => {
     const cardLine = cardLineRef.current;
@@ -371,25 +285,6 @@ const ScannerCardStream = ({
       scannerState.current.isScanning = anyCardIsScanning;
     };
 
-    const handleMouseDown = (e: MouseEvent | TouchEvent) => {
-      /* ... */
-    };
-    const handleMouseMove = (e: MouseEvent | TouchEvent) => {
-      /* ... */
-    };
-    const handleMouseUp = () => {
-      /* ... */
-    };
-    const handleWheel = (e: WheelEvent) => {
-      /* ... */
-    };
-    cardLine.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    cardLine.addEventListener("touchstart", handleMouseDown, { passive: true });
-    window.addEventListener("touchmove", handleMouseMove, { passive: true });
-    window.addEventListener("touchend", handleMouseUp);
-    cardLine.addEventListener("wheel", handleWheel, { passive: false });
 
     const animate = (currentTime: number) => {
       // --- (ANIMATION LOOP LOGIC - no changes here) ---
@@ -405,7 +300,6 @@ const ScannerCardStream = ({
           cardStreamState.current.velocity *
           cardStreamState.current.direction *
           deltaTime;
-        setSpeed(Math.round(cardStreamState.current.velocity));
       }
       const { position, cardLineWidth } = cardStreamState.current;
       const containerWidth = cardLine.parentElement?.offsetWidth || 0;
@@ -455,7 +349,10 @@ const ScannerCardStream = ({
     animationFrameId = requestAnimationFrame(animate);
 
     return () => {
-      /* ... (CLEANUP LOGIC - no changes here) ... */
+      cancelAnimationFrame(animationFrameId);
+      renderer.dispose();
+      geometry.dispose();
+      material.dispose();
     };
   }, [isPaused, cards, cardGap, friction, scanEffect]);
 
@@ -533,19 +430,13 @@ const ScannerCardStream = ({
               <div className="card-normal card absolute top-0 left-0 w-full h-full rounded-[15px] overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-[0_15px_40px_rgba(0,0,0,0.6)] border border-white/10 z-[2] [clip-path:inset(0_0_0_var(--clip-right,0%))]">
                 <div className="w-full h-full flex flex-col items-center justify-center p-8">
                   <div className="w-32 h-32 mb-4 opacity-90 hover:opacity-100 transition-opacity">
-                    {card.tokenType === "solana" ? (
-                      <SolanaToken />
-                    ) : (
-                      <EthereumToken />
-                    )}
+                    <USDCToken />
                   </div>
                   <div className="text-white text-2xl font-bold tracking-wider">
                     {card.displayName}
                   </div>
                   <div className="text-gray-400 text-sm mt-2">
-                    {card.tokenType === "solana"
-                      ? "Solana Network"
-                      : "Ethereum Network"}
+                    {fromChainName} → {toChainName}
                   </div>
                 </div>
               </div>
@@ -564,7 +455,7 @@ const ScannerCardStream = ({
           Processing bridge transaction...
         </div>
         <div className="text-gray-400 text-sm">
-          Encrypting payload · Verifying attestations
+          Burning {tokenSymbol} on {fromChainName}
         </div>
       </div>
     </div>
