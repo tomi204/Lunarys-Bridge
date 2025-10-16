@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownUp, ArrowRight } from "lucide-react";
@@ -27,6 +27,102 @@ import { NEW_RELAYER_ABI } from "@/abi/newRelayer";
 import { ERC20_ABI } from "@/abi/erc20";
 import { getTokenConfig } from "@/config/tokens";
 
+// Token Logo Components
+const EthereumLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
+  <svg
+    viewBox="0 0 256 417"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path
+      fill="#343434"
+      d="m127.961 0-2.795 9.5v275.668l2.795 2.79 127.962-75.638z"
+    />
+    <path fill="#8C8C8C" d="M127.962 0 0 212.32l127.962 75.639V154.158z" />
+    <path
+      fill="#3C3C3B"
+      d="m127.961 312.187-1.575 1.92v98.199l1.575 4.6L256 236.587z"
+    />
+    <path fill="#8C8C8C" d="M127.962 416.905v-104.72L0 236.585z" />
+    <path fill="#141414" d="m127.961 287.958 127.96-75.637-127.96-58.162z" />
+    <path fill="#393939" d="m.001 212.321 127.96 75.637V154.159z" />
+  </svg>
+);
+
+const SolanaLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
+  <svg
+    viewBox="0 0 397.7 311.7"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <defs>
+      <linearGradient
+        id="solGradient1"
+        x1="360.879"
+        y1="351.455"
+        x2="141.213"
+        y2="-69.294"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#00ffa3" />
+        <stop offset="1" stopColor="#dc1fff" />
+      </linearGradient>
+      <linearGradient
+        id="solGradient2"
+        x1="264.829"
+        y1="401.601"
+        x2="45.163"
+        y2="-19.148"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#00ffa3" />
+        <stop offset="1" stopColor="#dc1fff" />
+      </linearGradient>
+      <linearGradient
+        id="solGradient3"
+        x1="312.548"
+        y1="376.688"
+        x2="92.882"
+        y2="-44.061"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop offset="0" stopColor="#00ffa3" />
+        <stop offset="1" stopColor="#dc1fff" />
+      </linearGradient>
+    </defs>
+    <path
+      fill="url(#solGradient1)"
+      d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1z"
+    />
+    <path
+      fill="url(#solGradient2)"
+      d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1z"
+    />
+    <path
+      fill="url(#solGradient3)"
+      d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1z"
+    />
+  </svg>
+);
+
+const USDCLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
+  <svg
+    viewBox="0 0 2000 2000"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <circle cx="1000" cy="1000" r="1000" fill="#2775CA" />
+    <path
+      fill="#fff"
+      d="M1275 1158.33c0-145.83-87.5-195.83-262.5-216.66-125-16.67-150-50-150-108.34s41.67-95.83 125-95.83c75 0 116.67 25 137.5 87.5 4.17 12.5 16.67 20.83 29.17 20.83h66.66c16.67 0 29.17-12.5 29.17-29.16v-4.17c-16.67-91.67-91.67-162.5-187.5-170.83v-100c0-16.67-12.5-29.17-33.33-33.34h-62.5c-16.67 0-29.17 12.5-33.34 33.34v95.83c-125 16.67-204.16 100-204.16 204.17 0 137.5 83.33 191.66 258.33 212.5 116.67 20.83 154.17 45.83 154.17 112.5s-58.34 112.5-137.5 112.5c-108.34 0-145.84-45.84-158.34-108.34-4.16-16.66-16.66-25-29.16-25h-70.84c-16.66 0-29.16 12.5-29.16 29.17v4.17c16.66 104.16 83.33 179.16 220.83 200v100c0 16.66 12.5 29.16 33.33 33.33h62.5c16.67 0 29.17-12.5 33.34-33.33v-100c125-20.84 208.33-108.34 208.33-220.84z"
+    />
+    <path
+      fill="#fff"
+      d="M787.5 1595.83c-325-116.66-491.67-479.16-370.83-800 62.5-175 200-308.33 370.83-370.83 16.67-8.33 25-20.83 25-41.67V325c0-16.67-8.33-29.17-25-33.33-4.17 0-12.5 0-16.67 4.16-395.83 125-612.5 545.84-487.5 941.67 75 233.33 254.17 412.5 487.5 487.5 16.67 8.33 33.34 0 37.5-16.67 4.17-4.16 4.17-8.33 4.17-16.66v-58.34c0-12.5-12.5-29.16-25-37.5zM1229.17 295.83c-16.67-8.33-33.34 0-37.5 16.67-4.17 4.17-4.17 8.33-4.17 16.67v58.33c0 16.67 12.5 33.33 25 41.67 325 116.66 491.67 479.16 370.83 800-62.5 175-200 308.33-370.83 370.83-16.67 8.33-25 20.83-25 41.67V1700c0 16.67 8.33 29.17 25 33.33 4.17 0 12.5 0 16.67-4.16 395.83-125 612.5-545.84 487.5-941.67-75-237.5-258.34-416.67-487.5-491.67z"
+    />
+  </svg>
+);
+
 const chainOptions = [
   {
     value: "solana-devnet",
@@ -42,7 +138,7 @@ const chainOptions = [
 
 const tokenOptions = [
   { value: "USDC", label: "USDC", subtitle: "USD Coin (Sepolia)" },
-  { value: "CTKN", label: "CTKN", subtitle: "Demo liquidity token" },
+  // { value: "CTKN", label: "CTKN", subtitle: "Demo liquidity token" },
 ];
 
 const quickStats = [
@@ -72,6 +168,8 @@ export default function BridgePage() {
   const [ethereumDestination, setEthereumDestination] = useState("");
   const [encryptionError, setEncryptionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [balance, setBalance] = useState<string | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
   const isSolanaTarget = useMemo(() => {
     return toChain.startsWith("solana");
@@ -121,6 +219,47 @@ export default function BridgePage() {
     setFromChain(toChain);
     setToChain(fromChain);
   };
+
+  // Fetch real token balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!account || !signer || !activeTokenConfig) {
+        setBalance(null);
+        return;
+      }
+
+      setIsLoadingBalance(true);
+      try {
+        const erc20 = new ethers.Contract(
+          activeTokenConfig.address,
+          ERC20_ABI,
+          signer
+        );
+        const rawBalance = await erc20.balanceOf(account);
+        const formattedBalance = ethers.formatUnits(
+          rawBalance,
+          activeTokenConfig.decimals
+        );
+        setBalance(formattedBalance);
+      } catch (error) {
+        console.error("Error fetching balance:", error);
+        setBalance(null);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    fetchBalance();
+  }, [account, signer, activeTokenConfig, selectedToken]);
+
+  const handleMaxClick = () => {
+    if (balance) {
+      setAmount(balance);
+      setEncryptionError(null);
+      setSuccessMessage(null);
+    }
+  };
+
   const isFheReady = fheStatus === "ready";
   const isBridgeDisabled =
     isLoading ||
@@ -206,8 +345,8 @@ export default function BridgePage() {
       } catch {
         throw new Error("Invalid amount for the selected token.");
       }
-      if (parsedAmount <= 0n) {
-        throw new Error("La cantidad debe ser mayor que cero");
+      if (parsedAmount <= BigInt(0)) {
+        throw new Error("Amount must be greater than zero");
       }
 
       if (!newRelayerAddress) {
@@ -347,39 +486,53 @@ export default function BridgePage() {
           <Card className="w-full border-white/10 bg-white/5 shadow-[0_45px_140px_-80px_rgba(56,226,255,0.8)]">
             <CardContent className="space-y-8 p-8">
               <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
-                <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
-                  <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
+                <div className="space-y-6 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
+                  <div className="flex items-center justify-between">
                     <Label className="text-xs uppercase tracking-widest text-gray-400">
                       From
                     </Label>
                     {fromDetails ? (
-                      <span className="text-gray-500">
+                      <span className="text-xs text-gray-500">
                         {fromDetails.tagline}
                       </span>
                     ) : null}
                   </div>
+
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={fromChain} onValueChange={setFromChain}>
-                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
-                        <SelectValue />
+                      <SelectTrigger className="w-[200px] border-white/10 bg-white/10 px-4 py-3 text-base font-semibold text-white">
+                        <div className="flex items-center gap-2">
+                          <SelectValue />
+                        </div>
                       </SelectTrigger>
-                      <SelectContent className="bg-[#030712] text-white">
+                      <SelectContent className="bg-[#030712] text-white border-white/10">
                         {chainOptions.map((chain) => (
                           <SelectItem
                             key={chain.value}
                             value={chain.value}
                             disabled={chain.value === toChain}
+                            className="py-3"
                           >
-                            <div className="flex flex-col">
-                              <span>{chain.label}</span>
-                              <span className="text-xs text-gray-400">
-                                {chain.tagline}
-                              </span>
+                            <div className="flex items-center gap-3">
+                              {chain.value.includes("solana") ? (
+                                <SolanaLogo className="w-5 h-5 shrink-0" />
+                              ) : (
+                                <EthereumLogo className="w-5 h-5 shrink-0" />
+                              )}
+                              <div className="flex flex-col gap-1">
+                                <span className="text-sm font-medium">
+                                  {chain.label}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {chain.tagline}
+                                </span>
+                              </div>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+
                     <Select
                       value={selectedToken}
                       onValueChange={(value) => {
@@ -388,40 +541,78 @@ export default function BridgePage() {
                         setEncryptionError(null);
                       }}
                     >
-                      <SelectTrigger className="w-[120px] border-white/10 bg-white/10 text-base font-semibold text-white">
-                        <SelectValue />
+                      <SelectTrigger className="w-[160px] border-white/10 bg-white/10 px-4 py-3 text-base font-semibold text-white">
+                        <div className="flex items-center gap-2">
+                          {/* <USDCLogo className="w-5 h-5" /> */}
+                          <SelectValue />
+                        </div>
                       </SelectTrigger>
-                      <SelectContent className="bg-[#030712] text-white">
+                      <SelectContent className="bg-[#030712] text-white border-white/10">
                         {tokenOptions.map((token) => (
-                          <SelectItem key={token.value} value={token.value}>
-                            <div className="flex flex-col">
-                              <span>{token.label}</span>
-                              <span className="text-xs text-gray-400">
-                                {token.subtitle}
-                              </span>
+                          <SelectItem
+                            key={token.value}
+                            value={token.value}
+                            className="py-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <USDCLogo className="w-5 h-5 shrink-0" />
+                              <div className="flex flex-col gap-1">
+                                <span className="text-sm font-medium">
+                                  {token.label}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {token.subtitle}
+                                </span>
+                              </div>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <Input
-                    type="number"
-                    value={amount}
-                    min="0"
-                    onChange={(event) => {
-                      setAmount(event.target.value);
-                      setEncryptionError(null);
-                      setSuccessMessage(null);
-                    }}
-                    className="border-0 bg-transparent p-0 text-4xl font-semibold text-white focus-visible:ring-0"
-                  />
-                  <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>Balance: 126.84 {selectedToken}</span>
+
+                  <div className="space-y-2">
+                    <Input
+                      type="number"
+                      value={amount}
+                      min="0"
+                      step="0.01"
+                      onChange={(event) => {
+                        setAmount(event.target.value);
+                        setEncryptionError(null);
+                        setSuccessMessage(null);
+                      }}
+                      className="border-0 bg-transparent p-0 text-4xl font-semibold text-white focus-visible:ring-0"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-gray-500 uppercase tracking-wider">
+                        Balance
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {balance !== null && (
+                          <USDCLogo className="w-4 h-4 opacity-70" />
+                        )}
+                        <span className="text-sm font-medium text-gray-300">
+                          {isLoadingBalance
+                            ? "Loading..."
+                            : balance !== null
+                              ? `${Number(balance).toLocaleString("en-US", {
+                                  maximumFractionDigits: 4,
+                                  minimumFractionDigits: 2,
+                                })} ${selectedToken}`
+                              : "—"}
+                        </span>
+                      </div>
+                    </div>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="h-auto px-3 py-1 text-xs font-semibold text-white hover:bg-white/10"
+                      onClick={handleMaxClick}
+                      disabled={!balance || isLoadingBalance}
+                      className="rounded-lg px-4 py-2 text-sm font-semibold text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Max
                     </Button>
@@ -432,8 +623,7 @@ export default function BridgePage() {
                   <Button
                     onClick={handleSwapChains}
                     variant="outline"
-                    size="icon"
-                    className="rounded-2xl border border-white/20 bg-white/10 p-3 text-white transition-all hover:-translate-y-1 hover:bg-white/20"
+                    className="h-14 w-14 rounded-2xl border border-white/20 bg-white/10 text-white transition-all hover:-translate-y-1 hover:bg-white/20"
                     disabled={fromChain === toChain}
                     aria-label="Swap chains"
                   >
@@ -441,63 +631,102 @@ export default function BridgePage() {
                   </Button>
                 </div>
 
-                <div className="space-y-4 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
-                  <div className="flex items-center justify-between text-xs uppercase tracking-widest text-gray-400">
+                <div className="space-y-6 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
+                  <div className="flex items-center justify-between">
                     <Label className="text-xs uppercase tracking-widest text-gray-400">
                       To
                     </Label>
                     {toDetails ? (
-                      <span className="text-gray-500">{toDetails.tagline}</span>
+                      <span className="text-xs text-gray-500">
+                        {toDetails.tagline}
+                      </span>
                     ) : null}
                   </div>
+
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={toChain} onValueChange={setToChain}>
-                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white">
-                        <SelectValue />
+                      <SelectTrigger className="w-[200px] border-white/10 bg-white/10 px-4 py-3 text-base font-semibold text-white">
+                        <div className="flex items-center gap-2">
+                          {/* {toChain.includes("solana") ? (
+                            <SolanaLogo className="w-5 h-5" />
+                          ) : (
+                            <EthereumLogo className="w-5 h-5" />
+                          )} */}
+                          <SelectValue />
+                        </div>
                       </SelectTrigger>
-                      <SelectContent className="bg-[#030712] text-white">
+                      <SelectContent className="bg-[#030712] text-white border-white/10">
                         {chainOptions.map((chain) => (
                           <SelectItem
                             key={chain.value}
                             value={chain.value}
                             disabled={chain.value === fromChain}
+                            className="py-3"
                           >
-                            <div className="flex flex-col">
-                              <span>{chain.label}</span>
-                              <span className="text-xs text-gray-400">
-                                {chain.tagline}
-                              </span>
+                            <div className="flex items-center gap-3">
+                              {chain.value.includes("solana") ? (
+                                <SolanaLogo className="w-5 h-5 shrink-0" />
+                              ) : (
+                                <EthereumLogo className="w-5 h-5 shrink-0" />
+                              )}
+                              <div className="flex flex-col gap-1">
+                                <span className="text-sm font-medium">
+                                  {chain.label}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {chain.tagline}
+                                </span>
+                              </div>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white">
-                      Receive · {selectedToken}
+
+                    <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-gray-300">
+                      <USDCLogo className="w-4 h-4" />
+                      <span>Receive · {selectedToken}</span>
                     </div>
                   </div>
-                  <div className="grid gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
-                    <div className="flex items-center justify-between">
-                      <span>You receive</span>
-                      <span className="text-lg font-semibold text-white">
-                        {estimatedReceive} {selectedToken}
+
+                  <div className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-5">
+                    <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                      <span className="text-sm font-medium text-gray-300">
+                        You receive
                       </span>
+                      <div className="flex items-center gap-2">
+                        <USDCLogo className="w-5 h-5" />
+                        <span className="text-xl font-semibold text-white">
+                          {estimatedReceive} {selectedToken}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <span>Protocol fee</span>
-                      <span>
-                        {protocolFee} {selectedToken}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <span>Network fee</span>
-                      <span>
-                        {networkFee} {selectedToken}
-                      </span>
+
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">
+                          Protocol fee (0.25%)
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <USDCLogo className="w-3.5 h-3.5 opacity-60" />
+                          <span className="font-medium text-gray-300">
+                            {protocolFee} {selectedToken}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400">Network fee</span>
+                        <div className="flex items-center gap-1.5">
+                          <USDCLogo className="w-3.5 h-3.5 opacity-60" />
+                          <span className="font-medium text-gray-300">
+                            {networkFee} {selectedToken}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   {isSolanaTarget ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label className="text-xs uppercase tracking-widest text-gray-400">
                         Solana destination address
                       </Label>
@@ -509,14 +738,15 @@ export default function BridgePage() {
                           setSuccessMessage(null);
                         }}
                         placeholder="e.g. 4Nd1K..."
-                        className="border-white/10 bg-white/10 text-sm text-white placeholder:text-gray-500"
+                        className="border-white/10 bg-white/10 py-3 text-sm text-white placeholder:text-gray-500 focus-visible:ring-cyan-400/20"
                       />
-                      <p className="text-xs text-gray-500">
-                        We secure the address before forwarding it to the NewRelayer contract.
+                      <p className="text-xs leading-relaxed text-gray-500">
+                        We secure the address before forwarding it to the
+                        NewRelayer contract.
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label className="text-xs uppercase tracking-widest text-gray-400">
                         Ethereum destination address
                       </Label>
@@ -528,37 +758,55 @@ export default function BridgePage() {
                           setSuccessMessage(null);
                         }}
                         placeholder="0x..."
-                        className="border-white/10 bg-white/10 text-sm text-white placeholder:text-gray-500"
+                        className="border-white/10 bg-white/10 py-3 text-sm text-white placeholder:text-gray-500 focus-visible:ring-cyan-400/20"
                       />
-                      <p className="text-xs text-gray-500">
-                        Display-only field for the target EVM address (functionality coming soon).
+                      <p className="text-xs leading-relaxed text-gray-500">
+                        Display-only field for the target EVM address
+                        (functionality coming soon).
                       </p>
                     </div>
                   )}
                 </div>
               </div>
 
-              <Button
-                onClick={handleInitiateBridge}
-                disabled={isBridgeDisabled}
-                className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading
-                  ? "Encrypting..."
-                  : isFheReady
-                    ? "Initiate bridge"
-                    : "Preparing secure session..."}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              {helperMessage ? (
-                <p className="text-left text-xs text-gray-400">{helperMessage}</p>
-              ) : null}
-              {encryptionError ? (
-                <p className="text-left text-sm text-red-400">{encryptionError}</p>
-              ) : null}
-              {successMessage ? (
-                <p className="text-left text-sm text-emerald-300">{successMessage}</p>
-              ) : null}
+              <div className="space-y-4 pt-4">
+                <Button
+                  onClick={handleInitiateBridge}
+                  disabled={isBridgeDisabled}
+                  className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-6 text-lg font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] transition-all hover:shadow-[0_0_60px_rgba(56,226,255,0.5)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  {isLoading
+                    ? "Encrypting..."
+                    : isFheReady
+                      ? "Initiate bridge"
+                      : "Preparing secure session..."}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+
+                {helperMessage ? (
+                  <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
+                    <p className="text-sm leading-relaxed text-blue-300">
+                      {helperMessage}
+                    </p>
+                  </div>
+                ) : null}
+
+                {encryptionError ? (
+                  <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+                    <p className="text-sm leading-relaxed text-red-400">
+                      {encryptionError}
+                    </p>
+                  </div>
+                ) : null}
+
+                {successMessage ? (
+                  <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
+                    <p className="text-sm leading-relaxed text-emerald-300">
+                      {successMessage}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             </CardContent>
           </Card>
 
