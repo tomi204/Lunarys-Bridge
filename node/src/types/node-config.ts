@@ -1,22 +1,37 @@
 export interface NodeConfig {
+  // --- Ethereum / EVM ---
   ethereumRpcUrl: string;
-  newRelayerAddress: string;
   ethereumPrivateKey: string;
+  fhevmChainId: number;          // ej 11155111
+  newRelayerAddress: string;
 
+  // FHE / opcionales
+  fhevmGatewayUrl?: string;
+  fhevmAclAddress?: string;
+  fhevmKmsVerifierAddress?: string;
+  relayerPrivateKey?: string;
+
+  // --- Solana ---
   solanaRpcUrl: string;
   solanaPrivateKey: string;
 
-  bondAmount: string;
-  pollInterval: number;
+  // Necesarios para SOL → EVM
+  solanaProgramId: string;               // Program ID (Pubkey)
+  solanaMinSolverBondLamports?: number;  // default en config
+  solanaRequestOwner?: string;           // Pubkey; si tus seeds lo requieren
 
-  fhevmChainId: number;
-  fhevmGatewayUrl: string;
-  fhevmAclAddress: string;
-  fhevmKmsVerifierAddress: string;
-
+  // --- Relayer externo ---
   relayerApiUrl?: string;
 
-  testSolanaDestination?: string;
-  ethUsdcAddress?: string;
-  solUsdcAddress?: string;
+  // --- Bridge / Node settings ---
+  bondAmount: string;     // "0.03"
+  pollInterval: number;   // ms
+
+  // --- Token mapping ---
+  ethUsdcAddress?: string;  // EVM addr
+  solUsdcAddress?: string;  // SPL mint
+
+  // --- Fallbacks de test ---
+  testSolanaDestination?: string;  // base58 (EVM→SOL)
+  testEvmDestination?: string;     // 0x... (SOL→EVM)
 }

@@ -65,7 +65,8 @@ pub(crate) use instructions::release_sol::__client_accounts_release_sol;
 pub(crate) use instructions::release_spl::__client_accounts_release_spl;
 pub(crate) use instructions::verify_and_settle_spl::__client_accounts_verify_and_settle_spl;
 
-declare_id!("AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by");
+declare_id!("FjmUtLwGQibY9ZU1vnGQo5wwBPvo2gNx2mX5rHu9n3Wb");
+//declare_id!("AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by");
 
 #[arcium_program]
 pub mod contracts {

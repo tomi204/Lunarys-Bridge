@@ -3,12 +3,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { NodeConfig } from 'src/types/node-config';
-import { EthereumMonitorService } from 'src/bridge/services/ethereum-monitor.service';
-import { FheDecryptorService } from 'src/bridge/services/fhe-decryptor.service';
-import { SolanaTransferService } from 'src/bridge/services/solana-transfer.service';
-import { RelayerApiService } from 'src/bridge/services/relayer-api.service';
-import { BridgeRequest, BridgeStatus } from 'src/bridge/types';
-import { TokenMappingService } from 'src/bridge/services/token-mappings.service';
+import { EthereumMonitorService } from 'src/bridge-evm-to-sol/services/ethereum-monitor.service';
+import { FheDecryptorService } from 'src/bridge-evm-to-sol/services/fhe-decryptor.service';
+import { SolanaTransferService } from 'src/bridge-evm-to-sol/services/solana-transfer.service';
+import { RelayerApiService } from 'src/bridge-evm-to-sol/services/relayer-api.service';
+import { BridgeRequest, BridgeStatus } from 'src/bridge-evm-to-sol/types';
+import { TokenMappingService } from 'src/bridge-evm-to-sol/services/token-mappings.service';
 
 @Injectable()
 export class BridgeProcessorService {
@@ -35,7 +35,7 @@ export class BridgeProcessorService {
       process.env.TEST_SOLANA_DESTINATION;
   }
 
-  @OnEvent('bridge.initiated', { async: true })
+  @OnEvent('eth.bridge.initiated', { async: true })
   async handleBridgeInitiated(req: BridgeRequest) {
     const id = req.requestId.toString();
 

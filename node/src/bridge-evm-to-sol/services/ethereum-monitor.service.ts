@@ -2,7 +2,7 @@ import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ethers } from 'ethers';
-import { BridgeRequest } from 'src/bridge/types';
+import { BridgeRequest } from 'src/bridge-evm-to-sol/types';
 import { NodeConfig } from 'src/types/node-config';
 
 @Injectable()
@@ -83,7 +83,7 @@ export class EthereumMonitorService implements OnModuleInit, OnApplicationShutdo
           encryptedSolanaDestination: encrypted,
         };
 
-        this.events.emit('bridge.initiated', req);
+        this.events.emit('eth.bridge.initiated', req);
       },
     );
   }

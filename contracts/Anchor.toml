@@ -6,9 +6,9 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-contracts = "AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by"
+contracts = "FjmUtLwGQibY9ZU1vnGQo5wwBPvo2gNx2mX5rHu9n3Wb"
 [programs.devnet]
-contracts = "AfaF8Qe6ZR9kiGhBzJjuyLp6gmBwc7gZBivGhHzxN1by"
+contracts = "FjmUtLwGQibY9ZU1vnGQo5wwBPvo2gNx2mX5rHu9n3Wb"
 
 
 [registry]
