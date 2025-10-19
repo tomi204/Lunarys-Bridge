@@ -8,7 +8,7 @@ use arcis_imports::*;
 mod circuits {
     use arcis_imports::*;
 
-    /// Destino de Solana como 4 palabras u64 (little-endian)
+    /// Destination words for payouts
     pub struct DestWords {
         w0: u64,
         w1: u64,
@@ -16,21 +16,21 @@ mod circuits {
         w3: u64,
     }
 
-    /// 1) plan_payout: passthrough cifrado (lo usas en deposit_*)
+    /// 1) plan_payout: passthrough encrypted ix
     #[instruction]
     pub fn plan_payout(input_ctxt: Enc<Shared, DestWords>) -> Enc<Shared, (u64, u64, u64, u64)> {
         let d = input_ctxt.to_arcis();
         input_ctxt.owner.from_arcis((d.w0, d.w1, d.w2, d.w3))
     }
 
-    /// 2) reseal_destination: passthrough para “reseal” en claim
+    /// 2) reseal_destination: passthrough for “reseal” in claim
     #[instruction]
     pub fn reseal_destination(
         input_ctxt: Enc<Shared, DestWords>,
     ) -> Enc<Shared, (u64, u64, u64, u64)> {
         let d = input_ctxt.to_arcis();
-        // (hoy es igual al de arriba; más adelante puedes cambiar el "owner"
-        // si quieres mover la propiedad criptográfica)
+        // Today this is identical to plan_payout (could be combined)
+        // If we ever need different logic, we can change it here.
         input_ctxt.owner.from_arcis((d.w0, d.w1, d.w2, d.w3))
     }
 }
