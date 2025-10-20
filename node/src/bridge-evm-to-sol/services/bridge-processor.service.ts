@@ -7,7 +7,7 @@ import { FheDecryptorService } from 'src/bridge-evm-to-sol/services/fhe-decrypto
 import { SolanaTransferService } from 'src/bridge-evm-to-sol/services/solana-transfer.service';
 import { RelayerApiService } from 'src/bridge-evm-to-sol/services/relayer-api.service';
 import { BridgeRequest, BridgeStatus } from 'src/bridge-evm-to-sol/types';
-import { TokenMappingService } from 'src/bridge-evm-to-sol/services/token-mappings.service';
+import { TokenMappingService } from 'src/common/token-mapping.service';
 
 @Injectable()
 export class BridgeProcessorService {

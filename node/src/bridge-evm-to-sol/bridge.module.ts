@@ -5,8 +5,10 @@ import { SolanaTransferService } from 'src/bridge-evm-to-sol/services/solana-tra
 import { BridgeProcessorService } from 'src/bridge-evm-to-sol/services/bridge-processor.service';
 import { RelayerApiService } from 'src/bridge-evm-to-sol/services/relayer-api.service';
 import { HealthController } from 'src/bridge-evm-to-sol/controllers/health.controller';
+import { TokenMappingModule } from 'src/common/token-mapping.module';
 
 @Module({
+  imports: [TokenMappingModule],
   providers: [
     EthereumMonitorService,
     FheDecryptorService,

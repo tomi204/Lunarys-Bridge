@@ -31,8 +31,6 @@ import { ERC20_ABI } from "@/abi/erc20";
 import { getTokenConfig } from "@/config/tokens";
 import { toast } from "sonner";
 import { decodeBySelector, prettyBridgeError } from "@/lib/evm-error";
-<<<<<<< HEAD
-=======
 
 // Validation functions
 const isValidSolanaAddress = (address: string): boolean => {
@@ -144,7 +142,6 @@ const USDCLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
     />
   </svg>
 );
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
 
 const chainOptions = [
   {
@@ -191,21 +188,16 @@ export default function BridgePage() {
   const [ethereumDestination, setEthereumDestination] = useState("");
   const [encryptionError, setEncryptionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-<<<<<<< HEAD
-=======
   const [balance, setBalance] = useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [transactionPhase, setTransactionPhase] = useState<
     "idle" | "encrypting" | "burning" | "bridging" | "complete"
   >("idle");
   const [destinationAddressError, setDestinationAddressError] = useState<string | null>(null);
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
 
   const isSolanaTarget = useMemo(() => {
     return toChain.startsWith("solana");
   }, [toChain]);
-<<<<<<< HEAD
-=======
 
   const hasDestinationAddress = useMemo(() => {
     if (isSolanaTarget) {
@@ -214,7 +206,6 @@ export default function BridgePage() {
       return ethereumDestination.trim().length > 0 && isValidEthereumAddress(ethereumDestination);
     }
   }, [isSolanaTarget, destinationAddress, ethereumDestination]);
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
 
   const activeTokenConfig = useMemo(() => {
     return getTokenConfig(chainId ?? expectedChainId, selectedToken);
@@ -308,13 +299,7 @@ export default function BridgePage() {
     !signer ||
     !isFheReady ||
     !isCorrectNetwork ||
-<<<<<<< HEAD
-    (isSolanaTarget
-      ? destinationAddress.trim().length === 0
-      : ethereumDestination.trim().length === 0) ||
-=======
     !hasDestinationAddress ||
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
     !activeTokenConfig ||
     !isSolanaTarget;
 
@@ -335,23 +320,17 @@ export default function BridgePage() {
       if (ethereumDestination.trim().length === 0) {
         return "Enter the Ethereum destination address.";
       }
-<<<<<<< HEAD
-=======
       if (!isValidEthereumAddress(ethereumDestination)) {
         return "Enter a valid Ethereum address (0x...).";
       }
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
       return "Bridging to Ethereum will be available soon.";
     }
     if (destinationAddress.trim().length === 0) {
       return "Enter the Solana destination address.";
     }
-<<<<<<< HEAD
-=======
     if (!isValidSolanaAddress(destinationAddress)) {
       return "Enter a valid Solana address.";
     }
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
     if (!activeTokenConfig) {
       return "Pick a supported token for this route.";
     }
@@ -385,24 +364,17 @@ export default function BridgePage() {
     setIsLoading(true);
     setEncryptionError(null);
     setSuccessMessage(null);
-<<<<<<< HEAD
-=======
     setTransactionPhase("encrypting");
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
 
     try {
       // Encrypting phase - encrypt the destination
       const payload = await encryptSolanaDestination(destinationAddress);
       const tokenConfig = activeTokenConfig;
       if (!tokenConfig) {
-<<<<<<< HEAD
-        return toast.error(`Token ${selectedToken} is not configured for this network.`);
-=======
         setTransactionPhase("idle");
         return toast.error(
           `Token ${selectedToken} is not configured for this network.`
         );
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
       }
 
       const sanitizedAmount = amount && amount.trim().length > 0 ? amount : "0";
@@ -411,16 +383,6 @@ export default function BridgePage() {
       try {
         parsedAmount = ethers.parseUnits(sanitizedAmount, tokenConfig.decimals);
       } catch {
-<<<<<<< HEAD
-        return toast.error("Invalid amount for the selected token");
-      }
-
-      if (parsedAmount <= 0n) {
-        return toast.error("Amount must be greater than zero");
-      }
-
-      if (!newRelayerAddress) {
-=======
         setTransactionPhase("idle");
         return toast.error("Invalid amount for the selected token");
       }
@@ -431,15 +393,11 @@ export default function BridgePage() {
 
       if (!newRelayerAddress) {
         setTransactionPhase("idle");
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
         return toast.error("NewRelayer contract address not found");
       }
 
       if (!account) {
-<<<<<<< HEAD
-=======
         setTransactionPhase("idle");
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
         return toast.error("No connected EVM account detected");
       }
 
@@ -464,8 +422,6 @@ export default function BridgePage() {
       if (currentAllowance < parsedAmount) {
         const approveTx = await erc20.approve(newRelayerAddress, parsedAmount);
         await approveTx.wait();
-<<<<<<< HEAD
-=======
         toast.success(
           <div className="flex items-center gap-3">
             <USDCLogo className="w-6 h-6" />
@@ -483,7 +439,6 @@ export default function BridgePage() {
             </div>
           </div>
         );
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
       }
 
       const contract = new ethers.Contract(
@@ -500,9 +455,6 @@ export default function BridgePage() {
       );
 
       await tx.wait();
-<<<<<<< HEAD
-      setSuccessMessage("Bridge submitted. Your transaction is on its way.");
-=======
 
       toast.success(
         <div className="flex items-center gap-3">
@@ -533,16 +485,12 @@ export default function BridgePage() {
       setTimeout(() => {
         setTransactionPhase("idle");
       }, 3000);
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
     } catch (error) {
       const decoded = decodeBySelector(error);
       const nice = prettyBridgeError(decoded);
       toast.error(nice);
       setEncryptionError(nice);
-<<<<<<< HEAD
-=======
       setTransactionPhase("idle");
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
     } finally {
       setIsLoading(false);
     }
@@ -679,15 +627,10 @@ export default function BridgePage() {
 
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={fromChain} onValueChange={setFromChain}>
-<<<<<<< HEAD
-                      <SelectTrigger className="w-[155px] border-white/10 bg-white/10 text-lg font-semibold text-white cursor-pointer py-7">
-                        <SelectValue />
-=======
                       <SelectTrigger className="w-[220px] border-white/10 bg-white/10 px-5 py-4 text-base font-semibold text-white">
                         <div className="flex items-center gap-3">
                           <SelectValue />
                         </div>
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
                       </SelectTrigger>
                       <SelectContent className="bg-[#030712] text-white border-white/10">
                         {chainOptions.map((chain) => (
@@ -725,16 +668,11 @@ export default function BridgePage() {
                         setEncryptionError(null);
                       }}
                     >
-<<<<<<< HEAD
-                      <SelectTrigger className="w-[155px] border-white/10 bg-white/10 text-base font-semibold text-white cursor-pointer py-7">
-                        <SelectValue />
-=======
                       <SelectTrigger className="w-[180px] border-white/10 bg-white/10 px-2 py-4 text-base font-semibold text-white">
                         <div className="flex items-center gap-3">
                           <USDCLogo className="w-6 h-6 shrink-0" />
                           <SelectValue />
                         </div>
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
                       </SelectTrigger>
                       <SelectContent className="bg-[#030712] p-3 text-white border-white/10">
                         {tokenOptions.map((token) => (
@@ -759,25 +697,6 @@ export default function BridgePage() {
                       </SelectContent>
                     </Select>
                   </div>
-<<<<<<< HEAD
-                  <Input
-                    type="number"
-                    value={amount}
-                    min="0"
-                    onChange={(event) => {
-                      setAmount(event.target.value);
-                      setEncryptionError(null);
-                      setSuccessMessage(null);
-                    }}
-                    className="border-0 bg-transparent p-0 text-4xl font-semibold text-white focus-visible:ring-0"
-                  />
-                  <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>Balance: 126.84 {selectedToken}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto px-3 py-1 text-xs font-semibold text-white hover:bg-white/10 cursor-pointer"
-=======
 
                   <div className="space-y-2">
                     <Input
@@ -821,7 +740,6 @@ export default function BridgePage() {
                       onClick={handleMaxClick}
                       disabled={!balance || isLoadingBalance}
                       className="rounded-lg px-5 py-2.5 text-sm font-semibold text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed"
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
                     >
                       Max
                     </Button>
@@ -832,12 +750,7 @@ export default function BridgePage() {
                   <Button
                     onClick={handleSwapChains}
                     variant="outline"
-<<<<<<< HEAD
-                    size="icon"
-                    className="rounded-2xl border border-white/20 bg-white/10 p-3 text-white transition-all hover:-translate-y-1 hover:bg-white/20 cursor-pointer"
-=======
                     className="h-14 w-14 rounded-2xl border border-white/20 bg-white/10 text-white transition-all hover:-translate-y-1 hover:bg-white/20"
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
                     disabled={fromChain === toChain}
                     aria-label="Swap chains"
                   >
@@ -859,10 +772,6 @@ export default function BridgePage() {
 
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={toChain} onValueChange={setToChain}>
-<<<<<<< HEAD
-                      <SelectTrigger className="w-[180px] border-white/10 bg-white/10 text-lg font-semibold text-white cursor-pointer py-7">
-                        <SelectValue />
-=======
                       <SelectTrigger className="w-[220px] border-white/10 bg-white/10 px-5 py-4 text-base font-semibold text-white">
                         <div className="flex items-center gap-3">
                           {/* {toChain.includes("solana") ? (
@@ -872,7 +781,6 @@ export default function BridgePage() {
                           )} */}
                           <SelectValue />
                         </div>
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
                       </SelectTrigger>
                       <SelectContent className="bg-[#030712] text-white border-white/10">
                         {chainOptions.map((chain) => (
@@ -945,32 +853,13 @@ export default function BridgePage() {
                     </div>
                   </div>
                   {isSolanaTarget ? (
-<<<<<<< HEAD
-                    <div className="space-y-2">
-=======
                     <div className="space-y-3">
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
                       <Label className="text-xs uppercase tracking-widest text-gray-400">
                         Solana destination address
                       </Label>
                       <Input
                         value={destinationAddress}
                         onChange={(event) => {
-<<<<<<< HEAD
-                          setDestinationAddress(event.target.value);
-                          setEncryptionError(null);
-                          setSuccessMessage(null);
-                        }}
-                        placeholder="e.g. 4Nd1K..."
-                        className="border-white/10 bg-white/10 text-sm text-white placeholder:text-gray-500"
-                      />
-                      <p className="text-xs text-gray-500">
-                        We secure the address before forwarding it to the NewRelayer contract.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-=======
                           const value = event.target.value;
                           setDestinationAddress(value);
                           setEncryptionError(null);
@@ -1002,25 +891,12 @@ export default function BridgePage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
                       <Label className="text-xs uppercase tracking-widest text-gray-400">
                         Ethereum destination address
                       </Label>
                       <Input
                         value={ethereumDestination}
                         onChange={(event) => {
-<<<<<<< HEAD
-                          setEthereumDestination(event.target.value);
-                          setEncryptionError(null);
-                          setSuccessMessage(null);
-                        }}
-                        placeholder="0x..."
-                        className="border-white/10 bg-white/10 text-sm text-white placeholder:text-gray-500"
-                      />
-                      <p className="text-xs text-gray-500">
-                        Display-only field for the target EVM address (functionality coming soon).
-                      </p>
-=======
                           const value = event.target.value;
                           setEthereumDestination(value);
                           setEncryptionError(null);
@@ -1049,35 +925,11 @@ export default function BridgePage() {
                           (functionality coming soon).
                         </p>
                       )}
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
                     </div>
                   )}
                 </div>
               </div>
 
-<<<<<<< HEAD
-              <Button
-                onClick={handleInitiateBridge}
-                disabled={isBridgeDisabled}
-                className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 cursor-pointer py-4 text-base font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading
-                  ? "Encrypting..."
-                  : isFheReady
-                    ? "Initiate bridge"
-                    : "Preparing secure session..."}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              {helperMessage ? (
-                <p className="text-left text-xs text-gray-400">{helperMessage}</p>
-              ) : null}
-              {encryptionError ? (
-                <p className="text-left text-sm text-red-400">{encryptionError}</p>
-              ) : null}
-              {successMessage ? (
-                <p className="text-left text-sm text-emerald-300">{successMessage}</p>
-              ) : null}
-=======
               <div className="space-y-4 pt-4">
                 <Button
                   onClick={handleInitiateBridge}
@@ -1124,7 +976,6 @@ export default function BridgePage() {
                   </div>
                 ) : null}
               </div>
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
             </CardContent>
           </Card>
 
