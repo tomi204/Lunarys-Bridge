@@ -30,4 +30,8 @@ pub enum ErrorCode {
     MathOverflow,
     #[msg("Already finalized")]
     AlreadyFinalized,
+    #[msg("Claim window out of range")]
+    ClaimWindowOutOfRange,
+    #[msg("Insufficient escrow balance")]
+    InsufficientEscrowBalance,
 }

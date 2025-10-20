@@ -1,19 +1,19 @@
 use crate::constants::COMP_DEF_OFFSET_PLAN_PAYOUT;
 use crate::errors::ErrorCode;
-use crate::events::BridgeDeposit;
+use crate::events::BridgeInitiated;
 use crate::state::{BridgeConfig, BridgeRequest};
 use crate::{SignerAccount, ID, ID_CONST};
 
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use anchor_spl::token::spl_token; // for native_mint::id()
+use anchor_spl::token::spl_token;
 use anchor_spl::token::{self as token, SyncNative, Token, TokenAccount};
 use arcium_anchor::prelude::*;
 use core::mem::size_of;
 
 #[queue_computation_accounts("plan_payout", payer)]
 #[derive(Accounts)]
-#[instruction(computation_offset: u64, request_id: u64)] // <- include request_id in the ix
+#[instruction(computation_offset: u64, request_id: u64)]
 pub struct DepositSolAndQueue<'info> {
     // --- Signer / payer ---
     #[account(mut)]
@@ -23,8 +23,7 @@ pub struct DepositSolAndQueue<'info> {
     #[account(seeds=[b"config"], bump = config.bump)]
     pub config: Account<'info, BridgeConfig>,
 
-    // --- Request PDA (pattern B: create it here on deposit) ---
-    // seeds = ["request", payer, request_id_le]
+    // --- Request PDA  ---
     #[account(
         init,
         payer = payer,
@@ -34,7 +33,7 @@ pub struct DepositSolAndQueue<'info> {
     )]
     pub request_pda: Account<'info, BridgeRequest>,
 
-    // --- WSOL vault (TokenAccount with mint = NATIVE_MINT) owned by the signing PDA ---
+    // --- WSOL vault (mint = NATIVE_MINT) owned by Signer PDA ---
     #[account(
         mut,
         constraint = escrow_wsol.mint == spl_token::native_mint::id() @ ErrorCode::InvalidMint,
@@ -90,19 +89,20 @@ pub struct DepositSolAndQueue<'info> {
 pub fn handler(
     ctx: Context<DepositSolAndQueue>,
     computation_offset: u64,
-    request_id: u64, // <- we will persist this in the PDA
-    // Encrypted inputs for MXE
-    amount_ct: [u8; 32],
-    recipient_tag_ct: [u8; 32],
-    pub_key: [u8; 32],
-    nonce: u128,
-    // Public metadata (optional)
-    amount_commitment: [u8; 32],
-    recipient_hash: [u8; 32],
-    // Gross lamports the user wants to deposit (we'll apply fee)
-    amount_lamports: u64,
+    request_id: u64,
+
+    // Client encryption material (for reseal in claim)
+    client_pubkey: [u8; 32],
+    nonce: [u8; 16], // LE (16 bytes)
+    // u256 LE destination in 4 u64 words (due to absence of EncryptedU256 in the SDK)
+    destination_ct0: [u8; 32], // bytes 0..7
+    destination_ct1: [u8; 32], // bytes 8..15
+    destination_ct2: [u8; 32], // bytes 16..23
+    destination_ct3: [u8; 32], // bytes 24..31
+
+    amount_lamports: u64, // GROSS
 ) -> Result<()> {
-    // 0) Compute fee from config and net the amount (like Solidity contract)
+    // 0) Fee & net
     let cfg = &ctx.accounts.config;
     let mut fee = (amount_lamports as u128 * cfg.fee_bps as u128) / 10_000;
     if fee < cfg.min_fee as u128 {
@@ -111,10 +111,14 @@ pub fn handler(
     if fee > cfg.max_fee as u128 {
         fee = cfg.max_fee as u128;
     }
+    // (safe) if fee >= amount, it caps at 50%
+    if fee as u64 >= amount_lamports {
+        fee = (amount_lamports / 2) as u128;
+    }
     let fee_u64 = u64::try_from(fee).unwrap_or(u64::MAX);
     let amount_net = amount_lamports.saturating_sub(fee_u64);
 
-    // 1) Transfer NET lamports into the WSOL vault (escrow)
+    // 1) Transfer **GROSS** lamports to the WSOL vault (wrap) and sync
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -123,10 +127,9 @@ pub fn handler(
                 to: ctx.accounts.escrow_wsol.to_account_info(),
             },
         ),
-        amount_net,
+        amount_lamports,
     )?;
 
-    // 2) Sync WSOL vault to update TokenAccount amount
     token::sync_native(CpiContext::new(
         ctx.accounts.token_program.to_account_info(),
         SyncNative {
@@ -134,11 +137,12 @@ pub fn handler(
         },
     ))?;
 
-    // 3) Initialize the BridgeRequest PDA and **persist request_id**
+    // 2) Initialize BridgeRequest
     let req = &mut ctx.accounts.request_pda;
-    req.request_id = request_id; // <— using it “for real”
+
+    req.request_id = request_id;
     req.payer = ctx.accounts.payer.key();
-    req.token_mint = spl_token::native_mint::id(); // WSOL mint
+    req.token_mint = spl_token::native_mint::id(); // WSOL
     req.amount_locked = amount_net;
     req.fee_locked = fee_u64;
     req.created_at = Clock::get()?.unix_timestamp;
@@ -149,26 +153,36 @@ pub fn handler(
     req.finalized = false;
     req.bump = ctx.bumps.request_pda;
 
-    // Optional: log for easy tracing in explorers
-    msg!("request_id (u64) = {}", request_id);
+    // We persist material for reseal in claim
+    let nonce_u128 = u128::from_le_bytes(nonce);
+    req.client_pubkey = client_pubkey;
+    req.nonce_le = nonce_u128;
+    req.dest_ct_w0 = destination_ct0;
+    req.dest_ct_w1 = destination_ct1;
+    req.dest_ct_w2 = destination_ct2;
+    req.dest_ct_w3 = destination_ct3;
 
-    // 4) Emit a public event (you can add request_id in your event type if you want)
-    emit!(BridgeDeposit {
-        deposit_id: ctx.accounts.computation_account.key().to_bytes(),
-        amount_commitment,
-        recipient_hash,
-        nonce,
+    // 3) Event (pair with Solidity)
+    emit!(BridgeInitiated {
+        request_id,
+        sender: ctx.accounts.payer.key(),
+        token: spl_token::native_mint::id(), // we treat WSOL as a "token"
+        amount_after_fee: amount_net,
+        fee: fee_u64,
         ts: Clock::get()?.unix_timestamp as u64,
     });
 
-    // 5) Queue the confidential computation (unchanged)
+    // 4) Confidential queue (plan_payout) - if you keep it
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
     let args = vec![
-        Argument::ArcisPubkey(pub_key),
-        Argument::PlaintextU128(nonce),
-        Argument::EncryptedU64(amount_ct),
-        Argument::EncryptedU64(recipient_tag_ct),
+        Argument::ArcisPubkey(client_pubkey),
+        Argument::PlaintextU128(nonce_u128),
+        // 4× encrypted u64 (matches plan_payout circuit: DestWords)
+        Argument::EncryptedU64(destination_ct0),
+        Argument::EncryptedU64(destination_ct1),
+        Argument::EncryptedU64(destination_ct2),
+        Argument::EncryptedU64(destination_ct3),
     ];
 
     queue_computation(

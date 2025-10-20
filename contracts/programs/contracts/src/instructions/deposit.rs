@@ -4,8 +4,8 @@ use arcium_anchor::prelude::*;
 use core::mem::size_of;
 
 use crate::errors::ErrorCode;
-use crate::events::BridgeDeposit;
-use crate::state::{BridgeConfig, BridgeRequest};
+use crate::events::BridgeInitiated;
+use crate::state::BridgeRequest;
 use crate::{constants::COMP_DEF_OFFSET_PLAN_PAYOUT, SignerAccount, ID, ID_CONST};
 
 #[queue_computation_accounts("plan_payout", payer)]
@@ -34,11 +34,11 @@ pub struct DepositAndQueue<'info> {
 
     pub token_program: Program<'info, Token>,
 
-    // --- Config global (fees/ventanas/bond) ---
+    // --- Global config (fees/windows/bond) ---
     #[account(seeds=[b"config"], bump = config.bump)]
-    pub config: Account<'info, BridgeConfig>,
+    pub config: Account<'info, crate::state::BridgeConfig>,
 
-    // --- PDA del request (patrón B: se crea aquí) ---
+    // --- Request PDA ---
     #[account(
         init,
         payer = payer,
@@ -95,18 +95,18 @@ pub fn handler(
     ctx: Context<DepositAndQueue>,
     computation_offset: u64,
     request_id: u64,
-    // Encrypted amount / recipient_tag
-    amount_ct: [u8; 32],
-    recipient_tag_ct: [u8; 32],
-    pub_key: [u8; 32],
-    nonce: u128,
-    // Public Metadata
-    amount_commitment: [u8; 32],
-    recipient_hash: [u8; 32],
-    // Total amount to lock (neto + fee)
+    // Client encryption material (for possible reseal in claim)
+    client_pubkey: [u8; 32], // client's ephemeral x25519
+    nonce: [u8; 16],         // RescueCipher nonce (16 bytes, LE)
+    // u256 LE destination split into 4 encrypted u64 words (no EncryptedU256 in the SDK)
+    destination_ct0: [u8; 32], // bytes 0..7  (u64 #0)
+    destination_ct1: [u8; 32], // bytes 8..15 (u64 #1)
+    destination_ct2: [u8; 32], // bytes 16..23(u64 #2)
+    destination_ct3: [u8; 32], // bytes 24..31(u64 #3)
+    // Amount in plaintext (as in Solidity)
     amount: u64,
 ) -> Result<()> {
-    // 0) Calculate fee and neto
+    // 0) Fee and net amount
     let cfg = &ctx.accounts.config;
     let mut fee = (amount as u128 * cfg.fee_bps as u128) / 10_000;
     if fee < cfg.min_fee as u128 {
@@ -115,10 +115,14 @@ pub fn handler(
     if fee > cfg.max_fee as u128 {
         fee = cfg.max_fee as u128;
     }
+    // (safe) if fee >= amount, it falls to a 50% hard cap
+    if fee as u64 >= amount {
+        fee = (amount / 2) as u128;
+    }
     let fee_u64 = u64::try_from(fee).unwrap_or(u64::MAX);
     let amount_net = amount.saturating_sub(fee_u64);
 
-    // 1) Lock SPL **TOTAL** (neto + fee) in the escrow
+    // 1) Lock total SPL (net + fee) in the vault
     token::transfer_checked(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
@@ -129,11 +133,11 @@ pub fn handler(
                 authority: ctx.accounts.payer.to_account_info(),
             },
         ),
-        amount, // More (neto+fee) to the escrow
+        amount,
         ctx.accounts.mint.decimals,
     )?;
 
-    // 2) Initialize the BridgeRequest PDA
+    // 2) Initialize Request PDA
     let req = &mut ctx.accounts.request_pda;
     req.payer = ctx.accounts.payer.key();
     req.token_mint = ctx.accounts.mint.key();
@@ -147,26 +151,36 @@ pub fn handler(
     req.finalized = false;
     req.bump = ctx.bumps.request_pda;
 
-    // Explicit use of request_id to avoid warnings
-    msg!("bridge request_id = {}", request_id);
+    // --- We persist material for reseal in `claim` (symmetry with FHE.allow) ---
+    let nonce_u128 = u128::from_le_bytes(nonce);
+    req.client_pubkey = client_pubkey;
+    req.nonce_le = nonce_u128;
+    req.dest_ct_w0 = destination_ct0;
+    req.dest_ct_w1 = destination_ct1;
+    req.dest_ct_w2 = destination_ct2;
+    req.dest_ct_w3 = destination_ct3;
 
-    // 3) Minimum public event (parity with deposit_sol)
-    emit!(BridgeDeposit {
-        deposit_id: ctx.accounts.computation_account.key().to_bytes(),
-        amount_commitment,
-        recipient_hash,
-        nonce,
+    // 3) Minimum event (pair with Solidity)
+    emit!(BridgeInitiated {
+        request_id,
+        sender: ctx.accounts.payer.key(),
+        token: ctx.accounts.mint.key(),
+        amount_after_fee: amount_net,
+        fee: fee_u64,
         ts: Clock::get()?.unix_timestamp as u64,
     });
 
-    // 4) Queue confidential computation
+    // 4) Queue of the confidential computation (plan_payout)
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
     let args = vec![
-        Argument::ArcisPubkey(pub_key),
-        Argument::PlaintextU128(nonce),
-        Argument::EncryptedU64(amount_ct),
-        Argument::EncryptedU64(recipient_tag_ct),
+        Argument::ArcisPubkey(client_pubkey),
+        Argument::PlaintextU128(nonce_u128),
+        // 4 encrypted u64 words (to match the plan_payout circuit: DestWords)
+        Argument::EncryptedU64(destination_ct0),
+        Argument::EncryptedU64(destination_ct1),
+        Argument::EncryptedU64(destination_ct2),
+        Argument::EncryptedU64(destination_ct3),
     ];
 
     queue_computation(

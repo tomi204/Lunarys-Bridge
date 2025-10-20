@@ -1,55 +1,53 @@
-// programs/contracts/src/instructions/release_spl.rs
+use crate::events::IncomingBridgeDelivered;
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{self as token, Mint, Token, TokenAccount, TransferChecked};
 use arcium_anchor::prelude::*;
 
-use crate::constants::COMP_DEF_OFFSET_PLAN_PAYOUT;
 use crate::errors::ErrorCode;
+use crate::state::BridgeConfig; // <-- NEW
 use crate::{SignerAccount, ID_CONST};
 
 #[derive(Accounts)]
 pub struct ReleaseSpl<'info> {
-    /// Payer de las rent/ATAs si hiciera falta crearlas
-    #[account(mut)]
-    pub payer: Signer<'info>,
+    /// Relayer (authorized) and payer of rent/ATAs
+    #[account(mut, address = config.owner)] // <-- ONLY RELAYER
+    pub relayer: Signer<'info>, // <-- RENAMED (was "payer")
 
-    /// Mint del token (USDC/USDT)
+    /// Token mint (USDC/USDT)
     pub mint: Account<'info, Mint>,
 
-    /// Escrow que tiene los tokens bloqueados (propiedad = PDA firmante)
+    /// Escrow that holds the locked tokens (owner = signing PDA)
     #[account(
         mut,
         constraint = escrow_token.mint == mint.key() @ ErrorCode::InvalidMint,
-        // el owner **debe** ser el PDA firmante
         constraint = escrow_token.owner == derive_sign_pda!() @ ErrorCode::InvalidOwner,
     )]
     pub escrow_token: Account<'info, TokenAccount>,
 
-    /// ATA del destinatario (se crea si no existe)
+    /// Recipient's ATA (created if it doesn't exist)
     #[account(
         init_if_needed,
-        payer = payer,
+        payer = relayer,                                     // <-- RELAYER PAYS
         associated_token::mint = mint,
         associated_token::authority = recipient,
     )]
     pub recipient_token: Account<'info, TokenAccount>,
 
-    /// Destinatario público (wallet en Solana)
-    /// CHECK: solo lo usamos como authority del ATA
+    /// Public recipient
+    /// CHECK: only ATA authority
     pub recipient: UncheckedAccount<'info>,
 
-    // Arcium (opcional aquí, pero mantenemos mismo patrón de cuentas)
-    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PLAN_PAYOUT))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
-    pub arcium_program: Program<'info, Arcium>,
+    /// Global config (used to authorize the relayer)
+    #[account(seeds=[b"config"], bump = config.bump)] // <-- NEW
+    pub config: Account<'info, BridgeConfig>, // <-- NEW
 
-    // Programas
+    // Programs
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 
-    // PDA firmante de Arcium
+    // Arcium signing PDA
     #[account(
         mut,
         seeds = [&SIGN_PDA_SEED],
@@ -60,11 +58,17 @@ pub struct ReleaseSpl<'info> {
 }
 
 pub fn handler(ctx: Context<ReleaseSpl>, amount: u64) -> Result<()> {
-    // Necesitamos que el PDA firme la transferencia
+    // Defensive check of escrow funds (optional)
+    require!(
+        ctx.accounts.escrow_token.amount >= amount,
+        ErrorCode::InsufficientEscrowBalance
+    );
+
+    // PDA signature
     let bump = ctx.bumps.sign_pda_account;
     let signer_seeds: &[&[u8]] = &[&SIGN_PDA_SEED, &[bump]];
 
-    // CPI: transfer_checked desde el escrow (owner = PDA) al ATA del recipient
+    // SPL Transfer
     token::transfer_checked(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -79,6 +83,13 @@ pub fn handler(ctx: Context<ReleaseSpl>, amount: u64) -> Result<()> {
         amount,
         ctx.accounts.mint.decimals,
     )?;
+
+    // EVM mirror event
+    emit!(IncomingBridgeDelivered {
+        recipient: ctx.accounts.recipient.key(),
+        token: ctx.accounts.mint.key(),
+        amount,
+    });
 
     Ok(())
 }
