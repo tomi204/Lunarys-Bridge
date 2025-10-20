@@ -33,9 +33,10 @@ export default (): NodeConfig => {
     testSolanaDestination: process.env.TEST_SOLANA_DESTINATION ?? '',
     testEvmDestination: process.env.TEST_EVM_DESTINATION ?? '',
 
-    // Token mapping
     ethUsdcAddress: process.env.TOKEN_USDC ?? '',
     solUsdcAddress: process.env.TOKEN_SOL ?? '',
+    tokenDecimalsEvm: 6,
+    tokenDecimalsSol: 6,
   };
 
   if (!cfg.ethereumPrivateKey) throw new Error('ETHEREUM_PRIVATE_KEY is required in .env');

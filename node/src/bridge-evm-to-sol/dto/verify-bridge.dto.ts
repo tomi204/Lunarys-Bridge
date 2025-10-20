@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString } from 'class-validator';
 
-export class VerifyBridgeEvmToSolDto {
+export class VerifyBridgeDto {
   @IsString() @IsNotEmpty()
   requestId!: string;
 

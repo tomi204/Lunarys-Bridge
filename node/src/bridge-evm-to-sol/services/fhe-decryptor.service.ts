@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { NodeConfig } from 'src/types/node-config';
-import { FHEDecryptor } from 'src/fhe/fheDescrypt';
+import { FHEDecryptor } from '../../fhe/fheDescrypt';
 
 @Injectable()
 export class FheDecryptorService implements OnModuleInit {

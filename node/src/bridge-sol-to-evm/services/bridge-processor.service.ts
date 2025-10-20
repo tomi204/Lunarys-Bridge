@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
-import { NodeConfig } from '@/types/node-config';
-import { EthereumTransferService } from '@/bridge-sol-to-evm/services/ethereum-transfer.service';
-import { RelayerApiService } from '@/bridge-evm-to-sol/services/relayer-api.service';
-import { TokenMappingService } from '@/bridge-evm-to-sol/services/token-mappings.service';
-import { SolanaProgramService } from '@/bridge-sol-to-evm/services/solana-program.service';
+import { NodeConfig } from 'src/types/node-config';
+import { EthereumTransferService } from 'src/bridge-sol-to-evm/services/ethereum-transfer.service';
+import { RelayerApiService } from 'src/bridge-evm-to-sol/services/relayer-api.service';
+import { TokenMappingService } from 'src/bridge-evm-to-sol/services/token-mappings.service';
+import { SolanaProgramService } from 'src/bridge-sol-to-evm/services/solana-program.service';
 
 type Status = 'detected' | 'claimed' | 'decrypted' | 'transferred' | 'verified' | 'failed';
 

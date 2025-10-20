@@ -17,8 +17,7 @@ const projectId =
 
 const metadata = {
   name: "Lunarys Bridge",
-  description:
-    "Private Solana ↔ EVM bridge using Zama FHEVM encryption",
+  description: "Private Solana ↔ EVM bridge using encryption",
   url:
     typeof window !== "undefined"
       ? window.location.origin

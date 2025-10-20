@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
-import { NodeConfig } from '@/types/node-config';
+import { NodeConfig } from 'src/types/node-config';
 
 const ERC20_ABI = [
   'function decimals() view returns (uint8)',
@@ -22,11 +22,13 @@ export class EthereumTransferService {
   private readonly wallet: ethers.Wallet;
 
   constructor(private readonly config: ConfigService<NodeConfig, true>) {
-    const url = this.config.get('ethereumRpcUrl');
-    const pk  = this.config.get('ethereumPrivateKey');
-    this.provider = new ethers.JsonRpcProvider(url, { chainId: this.config.get('fhevmChainId'), name: 'evm' });
-    this.wallet   = new ethers.Wallet(pk, this.provider);
-  }
+  const url = this.config.getOrThrow<string>('ethereumRpcUrl');
+  const pk  = this.config.getOrThrow<string>('ethereumPrivateKey');
+  const chainId = Number(this.config.getOrThrow<number>('fhevmChainId'));
+
+  this.provider = new ethers.JsonRpcProvider(url, chainId);
+  this.wallet   = new ethers.Wallet(pk, this.provider);
+}
 
   isNative(token: string) {
     const t = token.toLowerCase();

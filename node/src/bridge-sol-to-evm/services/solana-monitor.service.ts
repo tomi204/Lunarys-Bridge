@@ -2,7 +2,7 @@ import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Connection, PublicKey } from '@solana/web3.js';
-import { NodeConfig } from '@/types/node-config';
+import { NodeConfig } from 'src/types/node-config';
 
 export interface SolBridgeInitiated {
   requestId: bigint;

@@ -44,7 +44,11 @@ export default function SecurityPage() {
           bullets: [
             "Smart contracts: Quantstamp, Zellic, and Trail of Bits",
             "Infrastructure: OtterSec adversarial testing",
+<<<<<<< HEAD
             "Privacy stack: Zama FHE review and cryptography validation",
+=======
+            "Privacy stack: FHE review and cryptography validation",
+>>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
           ],
         },
       ]}

@@ -38,9 +38,9 @@ export async function encryptEaddressForContract(params: {
 
   const { handles, inputProof } = await buf.encrypt();
 
-  
-  const handleHex = toHex(handles[0] as any);
-  const proofHex = toHex(inputProof as any);
+
+  const handleHex = toHex(handles[0] as Uint8Array);
+  const proofHex = toHex(inputProof as Uint8Array);
 
   return { handle: handleHex, proof: proofHex };
 }

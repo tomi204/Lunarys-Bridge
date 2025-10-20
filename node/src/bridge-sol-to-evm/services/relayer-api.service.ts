@@ -2,7 +2,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
-import { NodeConfig } from '@/types/node-config';
+import { NodeConfig } from 'src/types/node-config';
 
 // === EVM → SOL ===
 export interface VerificationRequestEvmToSol {

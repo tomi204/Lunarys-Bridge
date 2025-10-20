@@ -40,6 +40,7 @@ export type DecodedEvmError = {
 // ------------------------- utils -------------------------
 
 /** Extract revert data from common error shapes (ethers/viem/providers). */
+<<<<<<< HEAD
 function extractData(err: any): string | null {
   const candidates = [
     err?.data,
@@ -52,6 +53,21 @@ function extractData(err: any): string | null {
       if (typeof err?.body === "string") {
         try {
           const parsed = JSON.parse(err.body);
+=======
+function extractData(err: unknown): string | null {
+  const e = err as Record<string, unknown>;
+  const candidates = [
+    e?.data,
+    (e?.error as Record<string, unknown>)?.data,
+    ((e?.info as Record<string, unknown>)?.error as Record<string, unknown>)?.data,
+    (e?.cause as Record<string, unknown>)?.data,
+    ((e?.cause as Record<string, unknown>)?.error as Record<string, unknown>)?.data,
+    // Some providers embed JSON in `body`
+    (() => {
+      if (typeof e?.body === "string") {
+        try {
+          const parsed = JSON.parse(e.body);
+>>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
           return parsed?.error?.data;
         } catch { /* ignore */ }
       }
@@ -197,13 +213,21 @@ export const DEFAULT_SELECTOR_MAP: Record<string, string> = {
  * - Si es custom: usa selectorMap para identificar el nombre; si la firma incluye tipos, decodifica args.
  */
 export function decodeBySelector(
+<<<<<<< HEAD
   err: any,
+=======
+  err: unknown,
+>>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
   selectorMap: Record<string, string> = DEFAULT_SELECTOR_MAP
 ): DecodedEvmError | null {
   const data0 = extractData(err);
   const data = normalize0xLower(data0);
   if (!data) {
+<<<<<<< HEAD
     const msg = err?.shortMessage || err?.message;
+=======
+    const msg = (err as { shortMessage?: string; message?: string })?.shortMessage || (err as { message?: string })?.message;
+>>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
     return msg ? { kind: "unknown", readable: msg } : null;
   }
 

@@ -4,7 +4,7 @@ import {
   Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, SystemProgram, TransactionInstruction,
 } from '@solana/web3.js';
 import bs58 from 'bs58';
-import { NodeConfig } from '@/types/node-config';
+import { NodeConfig } from 'src/types/node-config';
 
 @Injectable()
 export class SolanaProgramService {

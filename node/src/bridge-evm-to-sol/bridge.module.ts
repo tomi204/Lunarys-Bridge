@@ -4,7 +4,7 @@ import { FheDecryptorService } from 'src/bridge-evm-to-sol/services/fhe-decrypto
 import { SolanaTransferService } from 'src/bridge-evm-to-sol/services/solana-transfer.service';
 import { BridgeProcessorService } from 'src/bridge-evm-to-sol/services/bridge-processor.service';
 import { RelayerApiService } from 'src/bridge-evm-to-sol/services/relayer-api.service';
-import { TokenMappingService } from 'src/bridge-evm-to-sol/services/token-mappings.service';
+import { HealthController } from 'src/bridge-evm-to-sol/controllers/health.controller';
 
 @Module({
   providers: [
@@ -13,8 +13,7 @@ import { TokenMappingService } from 'src/bridge-evm-to-sol/services/token-mappin
     SolanaTransferService,
     BridgeProcessorService,
     RelayerApiService,
-    TokenMappingService,
   ],
-  exports: [TokenMappingService],
+  controllers: [HealthController],
 })
 export class BridgeEvmToSolModule {}
