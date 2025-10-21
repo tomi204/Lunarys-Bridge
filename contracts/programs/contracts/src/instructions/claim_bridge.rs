@@ -8,23 +8,23 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use arcium_anchor::prelude::*;
 
-/// PDA seed para la bóveda del bono del solver:
+/// PDA seed for the solver's bond vault:
 pub const BOND_VAULT_SEED: &[u8] = b"bond";
 
-/// Claim + reseal (simétrico con el flujo EVM: dar acceso al solver)
+/// Claim + reseal (symmetrical with the EVM flow: give access to the solver)
 #[queue_computation_accounts("reseal_destination", solver)]
 #[derive(Accounts)]
 #[instruction(computation_offset_reseal: u64, request_id: u64)]
 pub struct ClaimRequest<'info> {
-    /// Solver que reclama y paga bond
+    /// Solver that claims and pays the bond
     #[account(mut)]
     pub solver: Signer<'info>,
 
-    /// Config global
+    /// Global config
     #[account(seeds = [b"config"], bump = config.bump)]
     pub config: Account<'info, BridgeConfig>,
 
-    /// BridgeRequest (Variant B: seeds incluyen dueño externo)
+    /// BridgeRequest (Variant B: seeds include external owner)
     #[account(
         mut,
         seeds = [b"request", request_owner.key().as_ref(), &request_id.to_le_bytes()],
@@ -32,12 +32,12 @@ pub struct ClaimRequest<'info> {
     )]
     pub request_pda: Account<'info, BridgeRequest>,
 
-    /// Sólo para seeds (Variant B)
+    /// Only for seeds (Variant B)
     /// CHECK: seeds-only
     pub request_owner: UncheckedAccount<'info>,
 
-    /// Bóveda (System-owned PDA) que custodia el bond
-    /// CHECK: system-owned, sin datos (space = 0)
+    /// Vault (System-owned PDA) that holds the bond
+    /// CHECK: system-owned, no data (space = 0)
     #[account(
         init_if_needed,
         payer = solver,
