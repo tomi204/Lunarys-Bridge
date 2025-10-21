@@ -1,22 +1,46 @@
-export interface NodeConfig {
+export type NodeConfig = {
+  // Ethereum
   ethereumRpcUrl: string;
-  newRelayerAddress: string;
   ethereumPrivateKey: string;
+  fhevmChainId: number;
+  newRelayerAddress?: string;
 
+  // Solana
   solanaRpcUrl: string;
   solanaPrivateKey: string;
+  solanaProgramId: string;
+  solanaMinSolverBondLamports?: number;
+  solanaRequestOwner?: string; // <- optional
 
-  bondAmount: string;
-  pollInterval: number;
+  // Node
+  bondAmount?: string;
+  pollInterval?: number;
 
-  fhevmChainId: number;
+  // FHE (EVM side)
   fhevmGatewayUrl: string;
   fhevmAclAddress: string;
   fhevmKmsVerifierAddress: string;
 
+  // External relayer
   relayerApiUrl?: string;
 
+  // Tests/fallbacks
   testSolanaDestination?: string;
-  ethUsdcAddress?: string;
-  solUsdcAddress?: string;
-}
+  testEvmDestination?: string;
+
+  // Tokens
+  ethUsdcAddress: string;
+  solUsdcAddress: string;
+  tokenDecimalsEvm: number;
+  tokenDecimalsSol: number;
+
+  // Arcium
+  arciumProgramId?: string;
+  arciumMxeProgramId: string;
+  arciumCompDefResealPda: string;
+  arciumCompDefPlanPayoutPda?: string;
+  arciumMxeX25519PublicKey?: string;
+
+  // Solver
+  solverX25519Secret?: string;
+};

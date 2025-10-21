@@ -44,7 +44,10 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+<<<<<<< HEAD
+=======
 .fhe/
+>>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
 
 # temp directory
 .temp
@@ -63,4 +66,8 @@ database.sqlite
 
 target/*
 !target/Verifier.sol
+<<<<<<< HEAD
 !target/zk_access.json
+=======
+!target/zk_access.json
+>>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb

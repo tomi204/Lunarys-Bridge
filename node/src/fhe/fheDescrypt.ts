@@ -21,7 +21,7 @@ export class FHEDecryptor {
   constructor(
     config: NodeConfig,
     provider: ethers.Provider,
-    wallet: ethers.Wallet,
+    wallet: ethers.Wallet
   ) {
     this.config = config;
     this.provider = provider;
@@ -33,7 +33,7 @@ export class FHEDecryptor {
    * Initialize the FHE instance for decryption
    */
   async initialize(): Promise<void> {
-    console.log('Initializing FHE instance with @zama-fhe/relayer-sdk...');
+    console.log("Initializing FHE instance with @zama-fhe/relayer-sdk...");
 
     try {
       // Create a timeout promise
@@ -194,7 +194,7 @@ export class FHEDecryptor {
       const decryptedValue = result[handleHex];
 
       if (!decryptedValue) {
-        throw new Error('Decryption failed: No result for handle');
+        throw new Error("Decryption failed: No result for handle");
       }
 
       console.log(`Decrypted value (uint256): ${decryptedValue}`);
@@ -205,11 +205,11 @@ export class FHEDecryptor {
 
       return solanaAddress;
     } catch (error) {
-      console.error('Error decrypting Solana address:', error);
+      console.error("Error decrypting Solana address:", error);
       if (error instanceof Error) {
-        console.error('Error details:', error.message);
-        if ('cause' in error) {
-          console.error('Error cause:', error.cause);
+        console.error("Error details:", error.message);
+        if ("cause" in error) {
+          console.error("Error cause:", error.cause);
         }
       }
       throw error;

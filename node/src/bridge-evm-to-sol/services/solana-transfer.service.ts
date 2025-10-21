@@ -6,7 +6,7 @@ import {
 } from '@solana/web3.js';
 import { getOrCreateAssociatedTokenAccount, transfer } from '@solana/spl-token';
 import bs58 from 'bs58';
-import { SolanaTransferResult } from 'src/bridge/types';
+import { SolanaTransferResult } from 'src/bridge-evm-to-sol/types';
 
 @Injectable()
 export class SolanaTransferService {

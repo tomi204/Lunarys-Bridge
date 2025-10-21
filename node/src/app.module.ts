@@ -3,9 +3,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import configuration from 'src/config/configuration';
 import validationSchema from 'src/config/validation';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { BridgeModule } from 'src/bridge/bridge.module';
 import { join } from 'path';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { BridgeEvmToSolModule } from 'src/bridge-evm-to-sol/bridge.module';
+import { BridgeSolToEvmModule } from 'src/bridge-sol-to-evm/bridge.module';
+import { TokenMappingModule } from 'src/common/token-mapping.module';
 
 @Module({
   imports: [
@@ -20,7 +22,9 @@ import { join } from 'path';
       expandVariables: true,
     }),
     EventEmitterModule.forRoot(),
-    BridgeModule,
+    TokenMappingModule,           
+    BridgeEvmToSolModule,
+    BridgeSolToEvmModule,
   ],
 })
 export class AppModule {}
