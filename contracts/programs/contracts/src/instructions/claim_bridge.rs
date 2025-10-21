@@ -93,23 +93,23 @@ pub fn handler(
     ctx: Context<ClaimRequest>,
     computation_offset_reseal: u64,
     request_id: u64,
-    solver_x25519: [u8; 32], // pubkey x25519 efímera del solver (del front)
+    solver_x25519: [u8; 32], // ephemeral x25519 pubkey of the solver (from the front)
 ) -> Result<()> {
     let cfg = &ctx.accounts.config;
     let req = &mut ctx.accounts.request_pda;
     let now = Clock::get()?.unix_timestamp;
 
-    // --- Checks (paridad con EVM) ---
+    // --- Checks (EVM parity) ---
     require!(!req.finalized, ErrorCode::AlreadyFinalized);
     if req.claimed {
-        // Si hay claim activo y NO está expirado → bloquear
+        // If there is an active claim and it is NOT expired -> block
         require!(now > req.claim_deadline, ErrorCode::ActiveClaim);
     }
 
     let min_bond = cfg.min_solver_bond;
     require!(min_bond > 0, ErrorCode::BondTooLow);
 
-    // --- Transferir bond al vault ---
+    // --- Transfer bond to the vault ---
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -121,7 +121,7 @@ pub fn handler(
         min_bond,
     )?;
 
-    // --- Actualizar request ---
+    // --- Update request ---
     req.claimed = true;
     req.solver = ctx.accounts.solver.key();
     req.claim_deadline = now
@@ -129,16 +129,16 @@ pub fn handler(
         .ok_or(ErrorCode::MathOverflow)?;
     req.bond_lamports = min_bond;
 
-    // --- Event público (como en Solidity) ---
+    // --- Public event (as in Solidity) ---
     emit!(BridgeClaimed {
         request_id,
         solver: ctx.accounts.solver.key(),
         bond: min_bond,
-        deadline: req.claim_deadline, // i64 en el event
+        deadline: req.claim_deadline, // i64 in the event
     });
 
-    // === Reseal: dar acceso al solver ===
-    // Usa material persistido en BridgeRequest (asegúrate de que existan estos campos en el struct):
+    // === Reseal: give access to the solver ===
+    // Use persisted material in BridgeRequest (make sure these fields exist in the struct):
     //   client_pubkey: [u8;32]
     //   nonce_le: u128
     //   dest_ct_w0..w3: [u8;32]
@@ -153,7 +153,7 @@ pub fn handler(
         Argument::EncryptedU64(req.dest_ct_w3),
     ];
 
-    // Reseal sin callback
+    // Reseal without callback
     queue_computation(ctx.accounts, computation_offset_reseal, args, None, vec![])?;
 
     msg!(

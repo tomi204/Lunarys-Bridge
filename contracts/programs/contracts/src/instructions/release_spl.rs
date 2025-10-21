@@ -5,7 +5,7 @@ use anchor_spl::token::{self as token, Mint, Token, TokenAccount, TransferChecke
 use arcium_anchor::prelude::*;
 
 use crate::errors::ErrorCode;
-use crate::state::BridgeConfig; // <-- NEW
+use crate::state::BridgeConfig;
 use crate::{SignerAccount, ID_CONST};
 
 #[derive(Accounts)]

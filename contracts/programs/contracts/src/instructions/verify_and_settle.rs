@@ -1,6 +1,6 @@
 use crate::errors::ErrorCode;
-use crate::events::{BridgePaidToSolver, BridgeVerifiedUrl}; // Asegúrate que existan en events.rs
-use crate::instructions::claim_bridge::BOND_VAULT_SEED; // mismo seed que en claim
+use crate::events::{BridgePaidToSolver, BridgeVerifiedUrl}; // Make sure they exist in events.rs
+use crate::instructions::claim_bridge::BOND_VAULT_SEED; // same seed as in claim
 use crate::state::{BridgeConfig, BridgeRequest};
 use crate::{SignerAccount, ID_CONST};
 
@@ -8,20 +8,20 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self as token, Mint, Token, TokenAccount, TransferChecked};
 use arcium_anchor::prelude::*;
 
-/// Verifica off-chain y liquida on-chain.
-/// Autorización: solo el relayer (usamos `config.owner`).
+/// Verifies off-chain and settles on-chain.
+/// Authorization: only the relayer (we use `config.owner`).
 #[derive(Accounts)]
 #[instruction(request_id: u64)]
 pub struct VerifyAndSettleSpl<'info> {
-    /// Relayer/verifier. Debe ser el owner configurado.
+    /// Relayer/verifier. Must be the configured owner.
     #[account(mut, address = config.owner)]
     pub relayer: Signer<'info>,
 
-    /// Config global
+    /// Global config
     #[account(seeds=[b"config"], bump = config.bump)]
     pub config: Account<'info, BridgeConfig>,
 
-    /// Request a liquidar. Variant B (incluye request_owner en seeds)
+    /// Request to settle. Variant B (includes request_owner in seeds)
     #[account(
         mut,
         seeds = [b"request", request_owner.key().as_ref(), &request_id.to_le_bytes()],
@@ -29,14 +29,14 @@ pub struct VerifyAndSettleSpl<'info> {
     )]
     pub request_pda: Account<'info, BridgeRequest>,
 
-    /// Solo para seeds (Variant B)
+    /// Only for seeds (Variant B)
     /// CHECK: seeds-only
     pub request_owner: UncheckedAccount<'info>,
 
-    /// Mint del token escroweado (USDC/USDT)
+    /// Mint of the escrowed token (USDC/USDT)
     pub mint: Account<'info, Mint>,
 
-    /// Vault con los tokens (owner = PDA firmante)
+    /// Vault with the tokens (owner = PDA signer)
     #[account(
         mut,
         constraint = escrow_token.mint == mint.key() @ ErrorCode::InvalidMint,
@@ -44,7 +44,7 @@ pub struct VerifyAndSettleSpl<'info> {
     )]
     pub escrow_token: Account<'info, TokenAccount>,
 
-    /// Token account del solver ganador (mismo mint y owner = request_pda.solver)
+    /// Token account of the winning solver (same mint and owner = request_pda.solver)
     #[account(
         mut,
         constraint = solver_token.mint == mint.key() @ ErrorCode::InvalidMint,
@@ -52,7 +52,7 @@ pub struct VerifyAndSettleSpl<'info> {
     )]
     pub solver_token: Account<'info, TokenAccount>,
 
-    /// PDA firmante (mismo usado en deposit_*)
+    /// PDA signer (same used in deposit_*)
     #[account(
         mut,
         seeds = [&SIGN_PDA_SEED],
@@ -61,7 +61,7 @@ pub struct VerifyAndSettleSpl<'info> {
     )]
     pub sign_pda_account: Account<'info, SignerAccount>,
 
-    /// PDA (System) con el bond del solver
+    /// PDA (System) with the solver's bond
     #[account(
         mut,
         seeds = [BOND_VAULT_SEED, &request_id.to_le_bytes()],
@@ -69,8 +69,8 @@ pub struct VerifyAndSettleSpl<'info> {
     )]
     pub bond_vault: SystemAccount<'info>,
 
-    /// Wallet del solver (para refundear bond)
-    /// CHECK: validamos contra request_pda.solver
+    /// Solver's wallet (to refund bond)
+    /// CHECK: we validate against request_pda.solver
     #[account(mut)]
     pub solver_wallet: UncheckedAccount<'info>,
 
@@ -83,12 +83,12 @@ pub fn handler(
     request_id: u64,
     dest_tx_hash: [u8; 32],
     evidence_hash: [u8; 32],
-    evidence_url: String, // decidimos siempre emitir la variante con URL
+    evidence_url: String, // we always decide to emit the variant with URL
 ) -> Result<()> {
     let req = &mut ctx.accounts.request_pda;
 
-    // --- Checks de estado/autorización ---
-    // `relayer` ya está restringido por address = config.owner
+    // --- Status/authorization checks ---
+    // `relayer` is already restricted by address = config.owner
     require!(!req.finalized, ErrorCode::RequestAlreadyFinalized);
     require!(req.claimed, ErrorCode::NoClaim);
 
@@ -101,13 +101,13 @@ pub fn handler(
         ErrorCode::InvalidOwner
     );
 
-    // --- payout = neto + fee ---
+    // --- payout = net + fee ---
     let payout = req
         .amount_locked
         .checked_add(req.fee_locked)
         .ok_or(ErrorCode::MathOverflow)?;
 
-    // --- SPL transfer: escrow -> solver_token (firma el PDA) ---
+    // --- SPL transfer: escrow -> solver_token (signed by the PDA) ---
     let bump = ctx.bumps.sign_pda_account;
     let signer_seeds: &[&[u8]] = &[&SIGN_PDA_SEED, &[bump]];
 
@@ -126,16 +126,16 @@ pub fn handler(
         ctx.accounts.mint.decimals,
     )?;
 
-    // --- Refund del bond al solver ---
+    // --- Bond refund to the solver ---
     let bond = req.bond_lamports;
     if bond > 0 {
-        // sacar de la vault
+        // take from the vault
         **ctx
             .accounts
             .bond_vault
             .to_account_info()
             .try_borrow_mut_lamports()? -= bond;
-        // mandar al solver
+        // send to the solver
         **ctx
             .accounts
             .solver_wallet
@@ -143,14 +143,14 @@ pub fn handler(
             .try_borrow_mut_lamports()? += bond;
     }
 
-    // --- Finalizar y limpiar estado de claim ---
+    // --- Finalize and clean claim state ---
     req.finalized = true;
     req.claimed = false;
     req.solver = Pubkey::default();
     req.claim_deadline = 0;
     req.bond_lamports = 0;
 
-    // --- Eventos: verificación + pago ---
+    // --- Events: verification + payment ---
     emit!(BridgeVerifiedUrl {
         request_id,
         relayer: ctx.accounts.relayer.key(),
