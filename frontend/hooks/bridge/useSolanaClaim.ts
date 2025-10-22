@@ -1,4 +1,6 @@
 // hooks/bridge/useSolanaClaim.ts
+"use client";
+
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { hexToBytes, solanaTxUrl } from "@/lib/bridge/utils";
@@ -23,7 +25,7 @@ export function useSolanaClaim() {
    * Podés opcionalmente forzar un `computationOffset` para debug.
    */
   const claim = useCallback(
-    async (opts?: { computationOffset?: bigint }): Promise<ClaimResult> => {
+    async (opts?: { computationOffset?: bigint; skipSim?: boolean }): Promise<ClaimResult> => {
       setLoading(true);
       setError(null);
       setLastSig(null);
@@ -46,11 +48,10 @@ export function useSolanaClaim() {
           const { x25519 } = await import("@arcium-hq/client");
           const sk = x25519.utils.randomSecretKey();
           solverPub = x25519.getPublicKey(sk);
-          // eslint-disable-next-line no-console
           console.warn("[DEV] Ephemeral x25519 in browser. Backend will not decrypt resealed outputs.");
         }
 
-        // 3) Owner/params (requestId=0n, tu program/BE lo resuelve)
+        // 3) Owner/params (ejemplo: requestId=0n si tu backend/flow lo crea así)
         const requestOwner =
           (wallet as any).publicKey?.toBase58?.() ?? String((wallet as any).publicKey);
 
@@ -59,18 +60,17 @@ export function useSolanaClaim() {
           requestOwner,
           solverX25519: solverPub,
           computationOffset: opts?.computationOffset,
+          simulateFirst: opts?.skipSim ? false : true,
         });
 
-        // 4) Estado + feedback
         setLastSig(res.sig);
         setLastOffset(res.offset);
         setPhase("bridging");
 
-        // Nada de JSX en .ts — usamos description + action del toast
-        toast.success("Claim sent", {
-          description: `Tx: ${res.sig.slice(0, 8)}…  •  Open in explorer`,
+        toast.success("Claim enviado", {
+          description: `Tx: ${res.sig.slice(0, 8)}…`,
           action: {
-            label: "Open",
+            label: "Abrir",
             onClick: () => window.open(solanaTxUrl(res.sig), "_blank", "noopener,noreferrer"),
           },
         });

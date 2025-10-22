@@ -8,7 +8,7 @@ const num = (s: string | undefined, d: number) => {
 export default (): NodeConfig => {
   const cfg: NodeConfig = {
     // Ethereum
-    ethereumRpcUrl: process.env.ETHEREUM_RPC_URL ?? 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY',
+    ethereumRpcUrl: process.env.ETHEREUM_RPC_URL ?? 'https://sepolia.infura.io/v3/1be9bb70966b486c8e4f6589492294b7',
     ethereumPrivateKey: process.env.ETHEREUM_PRIVATE_KEY ?? '',
     fhevmChainId: num(process.env.FHEVM_CHAIN_ID, 11155111),  
     newRelayerAddress: process.env.NEW_RELAYER_ADDRESS,

@@ -1,32 +1,33 @@
 // lib/bridge/solana/wallet.ts
-import type { SolanaWalletLike } from "@/types/bridge";
+"use client";
 
+import type { SolanaWalletLike } from "./claim";
+import { VersionedTransaction, Transaction } from "@solana/web3.js";
+
+/**
+ * Wrapper mínimo para Phantom/Solflare que devuelva SolanaWalletLike:
+ * - Conecta si hace falta
+ * - Usa signAndSendTransaction del provider (acepta Transaction o VersionedTransaction)
+ */
 export async function getSolanaWalletLike(): Promise<SolanaWalletLike> {
-  const anyWin = window as any;
+  const provider = (window as any)?.solana ?? (window as any)?.phantom?.solana;
 
-  // Phantom
-  if (anyWin?.solana?.isPhantom) {
-    const provider = anyWin.solana;
-    if (!provider.publicKey) await provider.connect();
-    return {
-      publicKey: provider.publicKey,
-      signAndSendTransaction: (tx: any) => provider.signAndSendTransaction(tx),
-    };
+  if (!provider) throw new Error("No se encontró wallet Solana (Phantom/Solflare).");
+
+  if (!provider.isConnected) {
+    // Phantom/solflare: connect() abre pop-up
+    await provider.connect();
   }
 
-  // Reown/AppKit (ajustá si tu integración difiere)
-  const reown = anyWin?.appkit?.solana || anyWin?.appKit?.solana || anyWin?.reown?.solana;
-  const w = reown?.wallet || reown?.getWallet?.();
-  if (w) {
-    if (!w.publicKey) await w.connect?.();
-    if (!w.publicKey || !w.signAndSendTransaction) {
-      throw new Error("Solana wallet does not expose signAndSendTransaction");
-    }
-    return {
-      publicKey: w.publicKey,
-      signAndSendTransaction: (tx: any) => w.signAndSendTransaction(tx),
-    };
-  }
+  const signAndSendTransaction = async (tx: Transaction | VersionedTransaction) => {
+    // La mayoría de wallets exponen signAndSendTransaction que acepta ambos tipos
+    const res = await provider.signAndSendTransaction(tx);
+    // Phantom devuelve { signature, publicKey }, algunos devuelven string
+    return typeof res === "string" ? res : { signature: res.signature };
+  };
 
-  throw new Error("No Solana wallet found. Please install Phantom or connect via AppKit.");
+  return {
+    publicKey: provider.publicKey,
+    signAndSendTransaction,
+  };
 }
