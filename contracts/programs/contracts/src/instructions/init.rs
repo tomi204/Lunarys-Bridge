@@ -12,7 +12,7 @@ pub struct InitPlanPayoutCompDef<'info> {
     #[account(mut, address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
     #[account(mut)]
-    /// CHECK: validado por init_comp_def
+    /// CHECK: validado by init_comp_def
     pub comp_def_account: UncheckedAccount<'info>,
     pub arcium_program: Program<'info, Arcium>,
     pub system_program: Program<'info, System>,

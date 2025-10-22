@@ -15,15 +15,15 @@ import {
 /* ================== ENV / CONFIG ================== */
 
 const CLUSTER_URL = process.env.CLUSTER_URL || "https://api.devnet.solana.com";
-const WALLET_KEYPAIR_PATH = process.env.WALLET_KEYPAIR_PATH; // ej: /Users/you/.config/solana/id.json
+const WALLET_KEYPAIR_PATH = process.env.WALLET_KEYPAIR_PATH; // e.g.: /Users/you/.config/solana/id.json
 const SOLANA_PRIVATE_KEY_B58 = process.env.SOLANA_PRIVATE_KEY || "";
 
-// Tu Program ID desplegado
+// Your deployed Program ID
 const PROGRAM_ID = new PublicKey("8gk2T4FJYaPUWHDzm5aKccu8HJSpEXYu3rFAoeb7FDE7");
-// Arcium Program en devnet
+// Arcium program on devnet
 const ARCIUM_PROGRAM_ID = new PublicKey("BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6");
 
-/* ============== Carga de wallet / provider ============== */
+/* ============== Load wallet / provider ============== */
 
 function loadKeypair(): Keypair {
   if (WALLET_KEYPAIR_PATH && fs.existsSync(WALLET_KEYPAIR_PATH)) {
@@ -47,13 +47,13 @@ async function main() {
   });
   anchor.setProvider(provider);
 
-  // 👇 En Anchor 0.31+ esta firma funciona sin cast raro:
+  // 👇 In Anchor 0.31+ this constructor works without weird casts:
   const program = new anchor.Program(
     idl as anchor.Idl,
     provider
   );
 
-  // === PDAs Arcium ===
+  // === Arcium PDAs ===
   const mxeAccount = getMXEAccAddress(PROGRAM_ID);
   const planPayoutOffset = Buffer.from(getCompDefAccOffset("plan_payout")).readUInt32LE();
   const resealOffset = Buffer.from(getCompDefAccOffset("reseal_destination")).readUInt32LE();
@@ -64,7 +64,7 @@ async function main() {
   console.log("plan_payout comp_def PDA:", planPayoutCompDef.toBase58());
   console.log("reseal_destination comp_def PDA:", resealCompDef.toBase58());
 
-  // === Idempotencia: si el comp_def ya existe, saltamos ===
+  // === Idempotency: if the comp_def already exists, skip ===
   const planExists = await connection.getAccountInfo(planPayoutCompDef);
   if (!planExists) {
     const sig = await program.methods
@@ -79,9 +79,8 @@ async function main() {
       .rpc({ commitment: "confirmed" });
     console.log("✅ init_plan_payout_comp_def tx:", sig);
   } else {
-    console.log("ℹ️ plan_payout comp_def ya inicializado; skip.");
+    console.log("ℹ️ plan_payout comp_def already initialized; skip.");
   }
-  console.log("script signer:", wallet.publicKey.toBase58());
   const resealExists = await connection.getAccountInfo(resealCompDef);
   if (!resealExists) {
     const sig = await program.methods
@@ -96,10 +95,10 @@ async function main() {
       .rpc({ commitment: "confirmed" });
     console.log("✅ init_reseal_comp_def tx:", sig);
   } else {
-    console.log("ℹ️ reseal_destination comp_def ya inicializado; skip.");
+    console.log("ℹ️ reseal_destination comp_def already initialized; skip.");
   }
 
-  console.log("Listo ✅");
+  console.log("Done ✅");
 }
 
 main().catch((e) => {
