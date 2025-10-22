@@ -26,10 +26,10 @@ import { MatrixText } from "@/components/ui/matrix-text";
 import { InlineMatrixText } from "@/components/ui/inline-matrix-text";
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 
-// Hooks
+// Hooks de negocio
 import { useBridgeRoute } from "@/hooks/bridge/useBridgeRoute";
-import { useSolanaClaim } from "@/hooks/bridge/useSolanaClaim";
 import { useEvmBridge } from "@/hooks/bridge/useEvmBridge";
+import { useSolanaInitiate } from "@/hooks/bridge/useSolanaInitiate"; // ✅ import correcto
 import { isValidSolanaAddress, isValidEthereumAddress } from "@/lib/bridge/utils";
 import { useFhevmBridge } from "@/providers/fhevm-bridge-provider";
 
@@ -97,13 +97,12 @@ const quickStats = [
   { label: "Route", value: "Tier 1" },
 ];
 
-// ✅ Obligatorio SOLO para Solana → Ethereum
-const REQUIRE_ETH_DEST_ON_CLAIM = true;
+// ✅ Obligatorio para Solana → Ethereum (init guarda la dirección EVM on-chain)
+const REQUIRE_ETH_DEST_ON_INIT = true;
 
 export default function BridgePage() {
   // Ruta
-  const { fromChain, toChain, setFromChain, setToChain, swap, isSolToEvm, isEvmToSol } =
-    useBridgeRoute();
+  const { fromChain, toChain, setFromChain, setToChain, swap, isSolToEvm, isEvmToSol } = useBridgeRoute();
 
   // Estado UI
   const [amount, setAmount] = useState("10.00");
@@ -117,25 +116,30 @@ export default function BridgePage() {
   const [ethereumDestinationError, setEthereumDestinationError] = useState<string | null>(null);
 
   const ethereumDestinationValid = useMemo(
-    () =>
-      ethereumDestination.trim().length > 0 &&
-      isValidEthereumAddress(ethereumDestination.trim()),
+    () => ethereumDestination.trim().length > 0 && isValidEthereumAddress(ethereumDestination.trim()),
     [ethereumDestination]
   );
 
   // Hooks negocio
-  const { claim, phase: solPhase, loading: solLoading, error: solErr, lastSig: lastSolSig } =
-    useSolanaClaim();
   const {
     bridge,
     phase: evmPhase,
     loading: evmLoading,
     error: evmErr,
     balance,
-    isLoadingBalance,
     tokenConfig,
     canBridge,
   } = useEvmBridge({ amount, selectedToken, solanaDestination: destinationAddress });
+
+  // NUEVO: initiate en Solana con address EVM en 4×u64
+  const {
+    initiate,
+    phase: solPhase,
+    loading: solLoading,
+    error: solErr,
+    lastSig: lastInitSig,
+    lastRequestPda,
+  } = useSolanaInitiate();
 
   // (Opcional) Debug FHE/chain en UI
   const { isConnected, isCorrectNetwork, fheStatus } = useFhevmBridge();
@@ -183,12 +187,12 @@ export default function BridgePage() {
   // Mensajes de ayuda
   const helperMessage = useMemo(() => {
     if (isSolToEvm) {
-      if (!hasSolWallet) return "Connect your Solana wallet (Phantom/AppKit) to claim.";
-      if (REQUIRE_ETH_DEST_ON_CLAIM && ethereumDestination.trim().length === 0)
-        return "Enter the Ethereum destination address.";
-      if (REQUIRE_ETH_DEST_ON_CLAIM && !isValidEthereumAddress(ethereumDestination))
+      if (!hasSolWallet) return "Connect your Solana wallet (Phantom/AppKit) to initiate.";
+      if (REQUIRE_ETH_DEST_ON_INIT && ethereumDestination.trim().length === 0)
+        return "Enter the Ethereum destination address (required on initiate).";
+      if (REQUIRE_ETH_DEST_ON_INIT && !isValidEthereumAddress(ethereumDestination))
         return "Enter a valid Ethereum address (0x...).";
-      return "Your Ethereum address will be used at the release step.";
+      return "The Ethereum address will be embedded on-chain (4×u64) during initiate.";
     }
     // EVM → Sol
     if (destinationAddress.trim().length === 0) return "Enter the Solana destination address.";
@@ -206,24 +210,46 @@ export default function BridgePage() {
     isEvmToSol,
   ]);
 
-  // Disable del botón (solo obliga EVM address en Sol→EVM)
+  // Disable del botón
   const isBridgeDisabled =
     isLoading ||
     (isSolToEvm
-      ? !hasSolWallet || (REQUIRE_ETH_DEST_ON_CLAIM && !ethereumDestinationValid)
+      ? !hasSolWallet || (REQUIRE_ETH_DEST_ON_INIT && !ethereumDestinationValid)
       : !canBridge);
 
-  // Acción principal (claim o bridge)
+  // Acción principal (INIT en Sol→EVM, BRIDGE en EVM→Sol)
   const onAction = async () => {
     if (isSolToEvm) {
-      if (REQUIRE_ETH_DEST_ON_CLAIM && !ethereumDestinationValid) {
+      if (REQUIRE_ETH_DEST_ON_INIT && !ethereumDestinationValid) {
         toast.error("Enter a valid Ethereum address (0x...).");
         return;
       }
-      // Ej.: persistir para el release
-      // localStorage.setItem("ethDestinationForClaim", ethereumDestination.trim());
-      return claim();
+      const ethRecipient = ethereumDestination.trim();
+      const res = await initiate({
+        requestId: 0n,   // ajustá si tu backend/contador cambia
+        ethRecipient,
+        amountLocked: 0n,
+        feeLocked: 0n,
+        endian: "be",
+        skipSim: false,
+      });
+      if (res.sig) {
+        toast.info("Initiate submitted", {
+          description: `Request: ${res.requestPda.slice(0, 8)}…`,
+          action: {
+            label: "Open",
+            onClick: () =>
+              window.open(
+                `https://explorer.solana.com/tx/${res.sig}?cluster=devnet`,
+                "_blank",
+                "noopener,noreferrer"
+              ),
+          },
+        });
+      }
+      return;
     }
+    // EVM → Sol
     return bridge();
   };
 
@@ -237,21 +263,23 @@ export default function BridgePage() {
     if (balance) setAmount(balance);
   };
 
-  // Debug compacto
-  const debugStatus = (
-    <div className="text-xs text-gray-500 grid grid-cols-2 gap-1 mt-2">
-      <div>EVM connected: <span className={isConnected ? "text-emerald-400" : "text-red-400"}>{String(isConnected)}</span></div>
-      <div>Sepolia network: <span className={isCorrectNetwork ? "text-emerald-400" : "text-red-400"}>{String(isCorrectNetwork)}</span></div>
-      <div>FHE ready: <span className={fheStatus === "ready" ? "text-emerald-400" : "text-red-400"}>{String(fheStatus === "ready")}</span></div>
-      <div>Token cfg: <span className={tokenConfig ? "text-emerald-400" : "text-red-400"}>{String(!!tokenConfig)}</span></div>
-    </div>
-  );
-
   const fromDetails = chainOptions.find((c) => c.value === fromChain);
   const toDetails = chainOptions.find((c) => c.value === toChain);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
+      {/* Overlays por fase */}
+      {phase === "locking" && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617]">
+          <MatrixText
+            text="Initiating on Solana"
+            className="min-h-0"
+            initialDelay={0}
+            letterAnimationDuration={300}
+            letterInterval={80}
+          />
+        </div>
+      )}
       {phase === "encrypting" && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617]">
           <MatrixText text="Encrypting" className="min-h-0" initialDelay={0} letterAnimationDuration={300} letterInterval={80} />
@@ -367,7 +395,6 @@ export default function BridgePage() {
                       <div className="flex items-center gap-2">
                         <USDCLogo className="w-5 h-5 opacity-70" />
                         <span className="text-sm font-medium text-gray-300">
-                          {/* El balance real lo trae el hook en EVM→Sol; acá mostramos placeholder o el valor si existe */}
                           {Number.isFinite(Number(balance))
                             ? `${Number(balance).toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 })} ${selectedToken}`
                             : "—"}
@@ -512,7 +539,7 @@ export default function BridgePage() {
                         <p className="text-xs leading-relaxed text-red-400">{ethereumDestinationError}</p>
                       ) : (
                         <p className="text-xs leading-relaxed text-gray-500">
-                          This address will be used at the EVM release step. The Solana claim itself does not submit it on-chain.
+                          This EVM address will be embedded on-chain (split in 4×u64) during the initiate.
                         </p>
                       )}
                     </div>
@@ -522,10 +549,18 @@ export default function BridgePage() {
                   {isEvmToSol && (
                     <div className="mt-2">
                       <div className="text-xs text-gray-500 grid grid-cols-2 gap-1">
-                        <div>EVM connected: <span className={isConnected ? "text-emerald-400" : "text-red-400"}>{String(isConnected)}</span></div>
-                        <div>Sepolia network: <span className={isCorrectNetwork ? "text-emerald-400" : "text-red-400"}>{String(isCorrectNetwork)}</span></div>
-                        <div>FHE ready: <span className={fheStatus === "ready" ? "text-emerald-400" : "text-red-400"}>{String(fheStatus === "ready")}</span></div>
-                        <div>Token cfg: <span className={tokenConfig ? "text-emerald-400" : "text-red-400"}>{String(!!tokenConfig)}</span></div>
+                        <div>
+                          EVM connected: <span className={isConnected ? "text-emerald-400" : "text-red-400"}>{String(isConnected)}</span>
+                        </div>
+                        <div>
+                          Sepolia network: <span className={isCorrectNetwork ? "text-emerald-400" : "text-red-400"}>{String(isCorrectNetwork)}</span>
+                        </div>
+                        <div>
+                          FHE ready: <span className={fheStatus === "ready" ? "text-emerald-400" : "text-red-400"}>{String(fheStatus === "ready")}</span>
+                        </div>
+                        <div>
+                          Token cfg: <span className={tokenConfig ? "text-emerald-400" : "text-red-400"}>{String(!!tokenConfig)}</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -541,14 +576,14 @@ export default function BridgePage() {
                 >
                   {isLoading ? (
                     <InlineMatrixText
-                      text={isSolToEvm ? "Claiming" : "Encrypting"}
+                      text={isSolToEvm ? "Initiating" : "Encrypting"}
                       className="text-black"
                       initialDelay={0}
                       letterAnimationDuration={200}
                       letterInterval={50}
                     />
                   ) : isSolToEvm ? (
-                    "Claim on Solana"
+                    "Initiate on Solana"
                   ) : fheStatus === "ready" ? (
                     "Initiate bridge"
                   ) : (
@@ -571,11 +606,11 @@ export default function BridgePage() {
                   </div>
                 )}
 
-                {/* Feedback simple para Sol→EVM */}
-                {lastSolSig && (
+                {/* Feedback simple para Sol→EVM (init) */}
+                {(lastInitSig || lastRequestPda) && (
                   <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
                     <p className="text-sm leading-relaxed text-emerald-300">
-                      Claim submitted. Check toast to open in explorer.
+                      {lastRequestPda ? `Request: ${lastRequestPda}` : "Initiate submitted."} Check toast to open in explorer.
                     </p>
                   </div>
                 )}
