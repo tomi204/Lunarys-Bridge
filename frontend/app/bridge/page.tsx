@@ -29,7 +29,7 @@ import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 // Hooks de negocio
 import { useBridgeRoute } from "@/hooks/bridge/useBridgeRoute";
 import { useEvmBridge } from "@/hooks/bridge/useEvmBridge";
-import { useSolanaInitiate } from "@/hooks/bridge/useSolanaInitiate"; // ✅ import correcto
+import { useSolanaInitiate } from "@/hooks/bridge/useSolanaInitiate";
 import { isValidSolanaAddress, isValidEthereumAddress } from "@/lib/bridge/utils";
 import { useFhevmBridge } from "@/providers/fhevm-bridge-provider";
 
@@ -131,7 +131,7 @@ export default function BridgePage() {
     canBridge,
   } = useEvmBridge({ amount, selectedToken, solanaDestination: destinationAddress });
 
-  // NUEVO: initiate en Solana con address EVM en 4×u64
+  // Solana INIT (guarda address EVM en on-chain)
   const {
     initiate,
     phase: solPhase,
@@ -226,11 +226,9 @@ export default function BridgePage() {
       }
       const ethRecipient = ethereumDestination.trim();
       const res = await initiate({
-        requestId: 0n,   // ajustá si tu backend/contador cambia
+        requestId: 0n,        // ajustá si usás contador global
         ethRecipient,
-        amountLocked: 0n,
-        feeLocked: 0n,
-        endian: "be",
+        amountLocked: 0n,     // demo; poné el real si tu handler lo requiere
         skipSim: false,
       });
       if (res.sig) {

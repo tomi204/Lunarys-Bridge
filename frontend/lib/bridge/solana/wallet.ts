@@ -1,16 +1,67 @@
+// lib/bridge/solana/wallet.ts
 "use client";
-import type { SolanaWalletLike } from "./init-request";
-import { VersionedTransaction, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 
-export async function getSolanaWalletLike(): Promise<SolanaWalletLike> {
-  const provider = (window as any)?.solana ?? (window as any)?.phantom?.solana;
-  if (!provider) throw new Error("No se encontró wallet Solana (Phantom/Solflare).");
-  if (!provider.isConnected) await provider.connect();
+export type SolanaWalletLike = {
+  publicKey: PublicKey;
+  signTransaction?: (tx: Transaction | VersionedTransaction) => Promise<Transaction | VersionedTransaction>;
+  signAndSendTransaction: (
+    tx: Transaction | VersionedTransaction,
+    opts?: { connection?: Connection; skipPreflight?: boolean }
+  ) => Promise<{ signature: string }>;
+};
 
-  const signAndSendTransaction = async (tx: Transaction | VersionedTransaction) => {
-    const res = await provider.signAndSendTransaction(tx);
-    return typeof res === "string" ? res : { signature: res.signature };
-    // si tu wallet usa sendRawTransaction: serializá primero
+function detectRawProvider(): any {
+  const w =
+    (window as any)?.solana ??
+    (window as any)?.phantom?.solana ??
+    (window as any)?.appkit?.solana ??
+    (window as any)?.appKit?.solana ??
+    (window as any)?.reown?.solana;
+  if (!w) throw new Error("No se encontró wallet Solana (Phantom/AppKit/Reown).");
+  return w;
+}
+
+export async function getSolanaWalletLike(rpcUrl = "https://api.devnet.solana.com"): Promise<SolanaWalletLike> {
+  const raw = detectRawProvider();
+  if (!raw.isConnected && typeof raw.connect === "function") {
+    await raw.connect();
+  }
+  if (!raw.publicKey) throw new Error("La wallet no está conectada.");
+  // Para compatibilidad, necesitamos un Connection si el wallet no envía la tx por sí mismo
+  const fallbackConn = new Connection(rpcUrl, "confirmed");
+
+  const signAndSendTransaction = async (
+    tx: Transaction | VersionedTransaction,
+    opts?: { connection?: Connection; skipPreflight?: boolean }
+  ) => {
+    // 1) Camino rápido: la wallet envía por nosotros
+    if (typeof raw.signAndSendTransaction === "function") {
+      const res = await raw.signAndSendTransaction(tx);
+      const signature = typeof res === "string" ? res : res?.signature;
+      if (signature) return { signature };
+
+      // Algunas wallets sólo “firman” con esa API; hacemos fallback a sendRaw
+      if (!raw.signTransaction) throw new Error("La wallet no expone signTransaction.");
+      const signed = await raw.signTransaction(tx);
+      const wire = (signed as any).serialize();
+      const conn = opts?.connection ?? fallbackConn;
+      const sig = await conn.sendRawTransaction(wire, { skipPreflight: !!opts?.skipPreflight });
+      return { signature: sig };
+    }
+
+    // 2) Fallback: firmar y enviar manualmente
+    if (!raw.signTransaction) throw new Error("La wallet no expone signTransaction.");
+    const signed = await raw.signTransaction(tx);
+    const wire = (signed as any).serialize();
+    const conn = opts?.connection ?? fallbackConn;
+    const sig = await conn.sendRawTransaction(wire, { skipPreflight: !!opts?.skipPreflight });
+    return { signature: sig };
   };
-  return { publicKey: provider.publicKey, signAndSendTransaction };
+
+  return {
+    publicKey: raw.publicKey as PublicKey,
+    signTransaction: raw.signTransaction?.bind(raw),
+    signAndSendTransaction,
+  };
 }

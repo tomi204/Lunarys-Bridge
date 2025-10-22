@@ -4,12 +4,21 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { solanaTxUrl } from "@/lib/bridge/utils";
-import { getSolanaWalletLike } from "@/lib/bridge/solana/wallet";
-import { initRequestWithEth } from "@/lib/bridge/solana/init-request";
+import { initRequestWithEthAnchor } from "@/lib/bridge/solana/init-request.anchor";
 import type { SolanaBridgePhase } from "@/types/bridge";
 
-export type InitiateResult = { requestPda: string; sig?: string | null; ethParts?: [bigint, bigint, bigint, bigint] };
+export type InitiateResult = {
+  requestPda: string;
+  sig?: string | null;
+  ethParts?: [bigint, bigint, bigint, bigint];
+};
 
+/**
+ * Dispara la initiate SPL (`initiate_bridge`) usando Anchor.
+ * - Conecta Phantom/AppKit si hace falta
+ * - Lee el SPL mint desde NEXT_PUBLIC_SPL_MINT (o permite override por param)
+ * - Simula antes de enviar (por defecto) y muestra AnchorError legible si falla
+ */
 export function useSolanaInitiate() {
   const [phase, setPhase] = useState<SolanaBridgePhase>("idle");
   const [loading, setLoading] = useState(false);
@@ -21,10 +30,9 @@ export function useSolanaInitiate() {
     async (params: {
       requestId?: bigint;
       ethRecipient: string;     // "0x..."
-      amountLocked?: bigint;    // lamports o SPL según tu programa
-      feeLocked?: bigint;
-      endian?: "be" | "le";
-      skipSim?: boolean;
+      amountLocked?: bigint;    // unidades del SPL (p.ej. 10 USDC => 10_000_000n)
+      skipSim?: boolean;        // default: false (o sea simula por defecto)
+      splMint?: string;         // opcional: override de NEXT_PUBLIC_SPL_MINT
     }): Promise<InitiateResult> => {
       setLoading(true);
       setError(null);
@@ -33,21 +41,33 @@ export function useSolanaInitiate() {
       setPhase("locking");
 
       try {
-        const wallet = await getSolanaWalletLike();
-        const ownerBase58 =
-          (wallet as any).publicKey?.toBase58?.() ?? String((wallet as any).publicKey);
-        const requestId = params.requestId ?? 0n;
+        // Asegurar wallet conectada (Phantom/AppKit)
+        const anyWin = window as any;
+        const w =
+          anyWin?.solana ??
+          anyWin?.phantom?.solana ??
+          anyWin?.appkit?.solana ??
+          anyWin?.appKit?.solana;
 
-        const res = await initRequestWithEth(wallet, {
-          requestId,
+        if (!w) throw new Error("No se encontró wallet Solana (Phantom/AppKit).");
+        if (!w.isConnected) {
+          await w.connect();
+        }
+
+        const ownerBase58 =
+          typeof w.publicKey?.toBase58 === "function"
+            ? w.publicKey.toBase58()
+            : String(w.publicKey);
+
+        const splMint = params.splMint ?? process.env.NEXT_PUBLIC_SPL_MINT;
+        if (!splMint) throw new Error("Falta NEXT_PUBLIC_SPL_MINT en .env.local");
+
+        const res = await initRequestWithEthAnchor({
           ownerBase58,
+          requestId: params.requestId ?? 0n,
+          splMint,
           ethRecipient: params.ethRecipient,
-          endian: params.endian ?? "be",
           amountLocked: params.amountLocked ?? 0n,
-          feeLocked: params.feeLocked ?? 0n,
-          tokenMint: "So11111111111111111111111111111111111111112", // WSOL default
-          solver: null,
-          claimDeadline: null,
           simulateFirst: params.skipSim ? false : true,
         });
 
@@ -55,16 +75,30 @@ export function useSolanaInitiate() {
         if (res.sig) setLastSig(res.sig);
         setPhase("burning");
 
-        toast.success(res.created ? "Request creada" : "Request ya existía", {
-          description: res.sig ? `Tx: ${res.sig.slice(0, 8)}…` : res.requestPda.slice(0, 8) + "…",
+        toast.success("Initiate submitted", {
+          description: res.sig
+            ? `Tx: ${res.sig.slice(0, 8)}…`
+            : res.requestPda.slice(0, 8) + "…",
           action: res.sig
-            ? { label: "Abrir", onClick: () => window.open(solanaTxUrl(res.sig!), "_blank", "noopener,noreferrer") }
+            ? {
+                label: "Open",
+                onClick: () =>
+                  window.open(
+                    solanaTxUrl(res.sig!),
+                    "_blank",
+                    "noopener,noreferrer"
+                  ),
+              }
             : undefined,
         });
 
-        return { requestPda: res.requestPda, sig: res.sig ?? null, ethParts: res.ethParts as any };
+        return {
+          requestPda: res.requestPda,
+          sig: res.sig ?? null,
+          ethParts: undefined as any, // mantener forma por compatibilidad
+        };
       } catch (e: any) {
-        const msg = e?.message || String(e);
+        const msg = e?.error?.errorMessage ?? e?.message ?? String(e);
         setError(msg);
         setPhase("idle");
         toast.error(msg);
