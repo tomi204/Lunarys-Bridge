@@ -19,9 +19,9 @@ pub struct DepositSolAndQueue<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    // --- Global config (fees / claim window / bond) ---
+    // --- Global config ---
     #[account(seeds=[b"config"], bump = config.bump)]
-    pub config: Account<'info, BridgeConfig>,
+    pub config: Box<Account<'info, BridgeConfig>>,
 
     // --- Request PDA  ---
     #[account(
@@ -31,7 +31,7 @@ pub struct DepositSolAndQueue<'info> {
         seeds = [b"request", payer.key().as_ref(), &request_id.to_le_bytes()],
         bump
     )]
-    pub request_pda: Account<'info, BridgeRequest>,
+    pub request_pda: Box<Account<'info, BridgeRequest>>,
 
     // --- WSOL vault (mint = NATIVE_MINT) owned by Signer PDA ---
     #[account(
@@ -39,7 +39,7 @@ pub struct DepositSolAndQueue<'info> {
         constraint = escrow_wsol.mint == spl_token::native_mint::id() @ ErrorCode::InvalidMint,
         constraint = escrow_wsol.owner == derive_sign_pda!() @ ErrorCode::InvalidOwner
     )]
-    pub escrow_wsol: Account<'info, TokenAccount>,
+    pub escrow_wsol: Box<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -53,7 +53,7 @@ pub struct DepositSolAndQueue<'info> {
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, SignerAccount>,
+    pub sign_pda_account: Box<Account<'info, SignerAccount>>,
 
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Account<'info, MXEAccount>,
@@ -90,16 +90,13 @@ pub fn handler(
     ctx: Context<DepositSolAndQueue>,
     computation_offset: u64,
     request_id: u64,
-
-    // Client encryption material (for reseal in claim)
+    // Client encryption material
     client_pubkey: [u8; 32],
-    nonce: [u8; 16], // LE (16 bytes)
-    // u256 LE destination in 4 u64 words (due to absence of EncryptedU256 in the SDK)
-    destination_ct0: [u8; 32], // bytes 0..7
-    destination_ct1: [u8; 32], // bytes 8..15
-    destination_ct2: [u8; 32], // bytes 16..23
-    destination_ct3: [u8; 32], // bytes 24..31
-
+    nonce: [u8; 16],
+    destination_ct0: [u8; 32],
+    destination_ct1: [u8; 32],
+    destination_ct2: [u8; 32],
+    destination_ct3: [u8; 32],
     amount_lamports: u64, // GROSS
 ) -> Result<()> {
     // 0) Fee & net
@@ -111,14 +108,13 @@ pub fn handler(
     if fee > cfg.max_fee as u128 {
         fee = cfg.max_fee as u128;
     }
-    // (safe) if fee >= amount, it caps at 50%
     if fee as u64 >= amount_lamports {
         fee = (amount_lamports / 2) as u128;
     }
     let fee_u64 = u64::try_from(fee).unwrap_or(u64::MAX);
     let amount_net = amount_lamports.saturating_sub(fee_u64);
 
-    // 1) Transfer **GROSS** lamports to the WSOL vault (wrap) and sync
+    // 1) Wrap SOL -> WSOL vault + sync
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -137,9 +133,8 @@ pub fn handler(
         },
     ))?;
 
-    // 2) Initialize BridgeRequest
+    // 2) Persist request
     let req = &mut ctx.accounts.request_pda;
-
     req.request_id = request_id;
     req.payer = ctx.accounts.payer.key();
     req.token_mint = spl_token::native_mint::id(); // WSOL
@@ -153,7 +148,6 @@ pub fn handler(
     req.finalized = false;
     req.bump = ctx.bumps.request_pda;
 
-    // We persist material for reseal in claim
     let nonce_u128 = u128::from_le_bytes(nonce);
     req.client_pubkey = client_pubkey;
     req.nonce_le = nonce_u128;
@@ -162,23 +156,22 @@ pub fn handler(
     req.dest_ct_w2 = destination_ct2;
     req.dest_ct_w3 = destination_ct3;
 
-    // 3) Event (pair with Solidity)
+    // 3) Event
     emit!(BridgeInitiated {
         request_id,
         sender: ctx.accounts.payer.key(),
-        token: spl_token::native_mint::id(), // we treat WSOL as a "token"
+        token: spl_token::native_mint::id(),
         amount_after_fee: amount_net,
         fee: fee_u64,
         ts: Clock::get()?.unix_timestamp as u64,
     });
 
-    // 4) Confidential queue (plan_payout) - if you keep it
+    // 4) Queue computation
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
     let args = vec![
         Argument::ArcisPubkey(client_pubkey),
         Argument::PlaintextU128(nonce_u128),
-        // 4× encrypted u64 (matches plan_payout circuit: DestWords)
         Argument::EncryptedU64(destination_ct0),
         Argument::EncryptedU64(destination_ct1),
         Argument::EncryptedU64(destination_ct2),
