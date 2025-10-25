@@ -36,7 +36,7 @@ pub struct ClaimRequest<'info> {
     /// CHECK: seeds-only
     pub request_owner: UncheckedAccount<'info>,
 
-    /// Vault (System-owned PDA) that holds the bond
+    /// Vault (System-owned PDA) that holds the bond (no data)
     /// CHECK: system-owned, no data (space = 0)
     #[account(
         init_if_needed,
@@ -47,7 +47,7 @@ pub struct ClaimRequest<'info> {
     )]
     pub bond_vault: UncheckedAccount<'info>,
 
-    // ---- Arcium (reseal) ----
+    // ---- Arcium (reducimos stack) ----
     #[account(
         init_if_needed,
         space = 9,
@@ -58,32 +58,33 @@ pub struct ClaimRequest<'info> {
     )]
     pub sign_pda_account: Account<'info, SignerAccount>,
 
+    // Cuentas pesadas en heap:
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
 
     #[account(mut, address = derive_mempool_pda!())]
-    /// CHECK: validado por Arcium
+    /// CHECK: validada por constraint (no necesitamos datos)
     pub mempool_account: UncheckedAccount<'info>,
 
     #[account(mut, address = derive_execpool_pda!())]
-    /// CHECK: validado por Arcium
+    /// CHECK: validada por constraint (no necesitamos datos)
     pub executing_pool: UncheckedAccount<'info>,
 
     #[account(mut, address = derive_comp_pda!(computation_offset_reseal))]
-    /// CHECK: validado por Arcium
+    /// CHECK: validada por constraint (no necesitamos datos)
     pub computation_account: UncheckedAccount<'info>,
 
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_RESEAL))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
 
     #[account(mut, address = derive_cluster_pda!(mxe_account))]
-    pub cluster_account: Account<'info, Cluster>,
+    pub cluster_account: Box<Account<'info, Cluster>>,
 
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
+    pub pool_account: Box<Account<'info, FeePool>>,
 
     #[account(address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
+    pub clock_account: Box<Account<'info, ClockAccount>>,
 
     pub arcium_program: Program<'info, Arcium>,
     pub system_program: Program<'info, System>,
@@ -93,23 +94,30 @@ pub fn handler(
     ctx: Context<ClaimRequest>,
     computation_offset_reseal: u64,
     request_id: u64,
-    solver_x25519: [u8; 32], // ephemeral x25519 pubkey of the solver (from the front)
+    solver_x25519: [u8; 32], // ephemeral x25519 pubkey del solver
 ) -> Result<()> {
+    // ===== tracing temprano (confirmar que pasamos try_accounts) =====
+    msg!("claim:start");
+
     let cfg = &ctx.accounts.config;
     let req = &mut ctx.accounts.request_pda;
     let now = Clock::get()?.unix_timestamp;
+    msg!(
+        "claim:cfg ok; min_bond={}, window={}",
+        cfg.min_solver_bond,
+        cfg.claim_window_secs
+    );
 
-    // --- Checks (EVM parity) ---
+    // --- Checks (paridad EVM) ---
     require!(!req.finalized, ErrorCode::AlreadyFinalized);
     if req.claimed {
-        // If there is an active claim and it is NOT expired -> block
         require!(now > req.claim_deadline, ErrorCode::ActiveClaim);
     }
 
     let min_bond = cfg.min_solver_bond;
     require!(min_bond > 0, ErrorCode::BondTooLow);
 
-    // --- Transfer bond to the vault ---
+    // --- Transferir bond al vault (System) ---
     system_program::transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
@@ -120,8 +128,9 @@ pub fn handler(
         ),
         min_bond,
     )?;
+    msg!("claim:bond transfer ok");
 
-    // --- Update request ---
+    // --- Actualizar request ---
     req.claimed = true;
     req.solver = ctx.accounts.solver.key();
     req.claim_deadline = now
@@ -129,19 +138,16 @@ pub fn handler(
         .ok_or(ErrorCode::MathOverflow)?;
     req.bond_lamports = min_bond;
 
-    // --- Public event (as in Solidity) ---
+    // --- Evento público ---
     emit!(BridgeClaimed {
         request_id,
         solver: ctx.accounts.solver.key(),
         bond: min_bond,
-        deadline: req.claim_deadline, // i64 in the event
+        deadline: req.claim_deadline,
     });
 
-    // === Reseal: give access to the solver ===
-    // Use persisted material in BridgeRequest (make sure these fields exist in the struct):
-    //   client_pubkey: [u8;32]
-    //   nonce_le: u128
-    //   dest_ct_w0..w3: [u8;32]
+    // === Reseal: dar acceso al solver ===
+    // Usa material persistido en BridgeRequest: client_pubkey, nonce_le, dest_ct_w0..w3
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
     let args = vec![
@@ -153,12 +159,9 @@ pub fn handler(
         Argument::EncryptedU64(req.dest_ct_w3),
     ];
 
-    // Reseal without callback
     queue_computation(ctx.accounts, computation_offset_reseal, args, None, vec![])?;
-
     msg!(
-        "request {} claimed + reseal queued (offset={})",
-        request_id,
+        "claim:queue_reseal ok (offset={})",
         computation_offset_reseal
     );
 
