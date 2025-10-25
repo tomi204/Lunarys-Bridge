@@ -17,6 +17,30 @@ pub mod events;
 pub mod instructions;
 pub mod state;
 
+// ===== Tracing helpers (opcionales; se activan con --features trace) =====
+#[cfg(feature = "trace")]
+#[macro_export]
+macro_rules! trace {
+    ($($arg:tt)*) => {{
+        ::anchor_lang::prelude::msg!($($arg)*);
+    }};
+}
+#[cfg(not(feature = "trace"))]
+#[macro_export]
+macro_rules! trace {
+    ($($arg:tt)*) => {};
+}
+
+#[cfg(feature = "trace")]
+#[inline(always)]
+pub fn cu(label: &str) {
+    ::anchor_lang::prelude::msg!(label);
+    ::anchor_lang::solana_program::log::sol_log_compute_units();
+}
+#[cfg(not(feature = "trace"))]
+#[inline(always)]
+pub fn cu(_label: &str) {}
+
 // Re-export handlers & Contexts so entrypoints can delegate cleanly
 pub use instructions::{
     claim_request_handler,
@@ -76,10 +100,19 @@ pub mod contracts {
 
     // ---- Arcium: comp-def init / queue / callback ----
     pub fn init_plan_payout_comp_def(ctx: Context<InitPlanPayoutCompDef>) -> Result<()> {
-        init_plan_payout_comp_def_handler(ctx)
+        trace!("entry:init_plan_payout_comp_def");
+        cu("before:init_plan_payout_comp_def");
+        let res = init_plan_payout_comp_def_handler(ctx);
+        cu("after:init_plan_payout_comp_def");
+        res
     }
+
     pub fn init_reseal_comp_def(ctx: Context<InitResealCompDef>) -> Result<()> {
-        init_reseal_comp_def_handler(ctx)
+        trace!("entry:init_reseal_comp_def");
+        cu("before:init_reseal_comp_def");
+        let res = init_reseal_comp_def_handler(ctx);
+        cu("after:init_reseal_comp_def");
+        res
     }
 
     pub fn queue_plan_payout(
@@ -90,14 +123,18 @@ pub mod contracts {
         amount_ct: [u8; 32],
         recipient_tag_ct: [u8; 32],
     ) -> Result<()> {
-        queue_plan_payout_handler(
+        trace!("entry:queue_plan_payout off={}", computation_offset);
+        cu("before:queue_plan_payout");
+        let res = queue_plan_payout_handler(
             ctx,
             computation_offset,
             pub_key,
             nonce,
             amount_ct,
             recipient_tag_ct,
-        )
+        );
+        cu("after:queue_plan_payout");
+        res
     }
 
     #[arcium_callback(encrypted_ix = "plan_payout")]
@@ -105,7 +142,11 @@ pub mod contracts {
         ctx: Context<PlanPayoutCallback>,
         output: ComputationOutputs<PlanPayoutOutput>,
     ) -> Result<()> {
-        plan_payout_callback_handler(ctx, output)
+        trace!("entry:plan_payout_callback");
+        cu("before:plan_payout_callback");
+        let res = plan_payout_callback_handler(ctx, output);
+        cu("after:plan_payout_callback");
+        res
     }
 
     // ---- Deposits (lock) ----
@@ -121,7 +162,9 @@ pub mod contracts {
         destination_ct3: [u8; 32],
         amount: u64,
     ) -> Result<()> {
-        deposit_and_queue_handler(
+        trace!("entry:initiate_bridge req_id={}", request_id);
+        cu("before:initiate_bridge");
+        let res = deposit_and_queue_handler(
             ctx,
             computation_offset,
             request_id,
@@ -132,7 +175,9 @@ pub mod contracts {
             destination_ct2,
             destination_ct3,
             amount,
-        )
+        );
+        cu("after:initiate_bridge");
+        res
     }
 
     pub fn initiate_bridge_sol(
@@ -147,7 +192,9 @@ pub mod contracts {
         destination_ct3: [u8; 32],
         lamports: u64,
     ) -> Result<()> {
-        deposit_sol_and_queue_handler(
+        trace!("entry:initiate_bridge_sol req_id={}", request_id);
+        cu("before:initiate_bridge_sol");
+        let res = deposit_sol_and_queue_handler(
             ctx,
             computation_offset,
             request_id,
@@ -158,21 +205,29 @@ pub mod contracts {
             destination_ct2,
             destination_ct3,
             lamports,
-        )
+        );
+        cu("after:initiate_bridge_sol");
+        res
     }
+
     // ---- Releases (unlock) ----
-    // SPL tokens: explicit amount (you can use “all” if your handler decides so)
     pub fn deliver_tokens(ctx: Context<ReleaseSpl>, amount: u64) -> Result<()> {
-        release_spl_handler(ctx, amount)
+        trace!("entry:deliver_tokens amount={}", amount);
+        cu("before:deliver_tokens");
+        let res = release_spl_handler(ctx, amount);
+        cu("after:deliver_tokens");
+        res
     }
 
-    // SOL (WSOL → unwrap → SOL): normally you drain everything and close the vault
     pub fn deliver_tokens_sol(ctx: Context<ReleaseSol>, amount: u64) -> Result<()> {
-        release_sol_handler(ctx, amount)
+        trace!("entry:deliver_tokens_sol amount={}", amount);
+        cu("before:deliver_tokens_sol");
+        let res = release_sol_handler(ctx, amount);
+        cu("after:deliver_tokens_sol");
+        res
     }
 
-    // ---- Config and Set (Init) ----
-
+    // ---- Config ----
     pub fn init_config(
         ctx: Context<InitConfig>,
         fee_bps: u16,
@@ -182,7 +237,9 @@ pub mod contracts {
         min_solver_bond: u64,
         slash_bps: u16,
     ) -> Result<()> {
-        init_config_handler(
+        trace!("entry:init_config");
+        cu("before:init_config");
+        let res = init_config_handler(
             ctx,
             fee_bps,
             min_fee,
@@ -190,7 +247,9 @@ pub mod contracts {
             claim_window_secs,
             min_solver_bond,
             slash_bps,
-        )
+        );
+        cu("after:init_config");
+        res
     }
 
     pub fn set_config(
@@ -202,7 +261,9 @@ pub mod contracts {
         min_solver_bond: Option<u64>,
         slash_bps: Option<u16>,
     ) -> Result<()> {
-        set_config_handler(
+        trace!("entry:set_config");
+        cu("before:set_config");
+        let res = set_config_handler(
             ctx,
             fee_bps,
             min_fee,
@@ -210,19 +271,31 @@ pub mod contracts {
             claim_window_secs,
             min_solver_bond,
             slash_bps,
-        )
+        );
+        cu("after:set_config");
+        res
     }
+
+    // ---- Claim / settle / expirations ----
     pub fn claim_bridge(
         ctx: Context<ClaimRequest>,
         computation_offset_reseal: u64,
         request_id: u64,
         solver_x25519: [u8; 32],
     ) -> Result<()> {
-        claim_request_handler(ctx, computation_offset_reseal, request_id, solver_x25519)
+        trace!("entry:claim_bridge req_id={}", request_id);
+        cu("before:claim_bridge");
+        let res = claim_request_handler(ctx, computation_offset_reseal, request_id, solver_x25519);
+        cu("after:claim_bridge");
+        res
     }
 
     pub fn release_expired_claim(ctx: Context<ReleaseExpiredClaim>, request_id: u64) -> Result<()> {
-        release_expired_claim_handler(ctx, request_id)
+        trace!("entry:release_expired_claim req_id={}", request_id);
+        cu("before:release_expired_claim");
+        let res = release_expired_claim_handler(ctx, request_id);
+        cu("after:release_expired_claim");
+        res
     }
 
     pub fn verify_and_settle_spl(
@@ -232,6 +305,16 @@ pub mod contracts {
         evidence_hash: [u8; 32],
         evidence_url: String,
     ) -> Result<()> {
-        verify_and_settle_spl_handler(ctx, request_id, dest_tx_hash, evidence_hash, evidence_url)
+        trace!("entry:verify_and_settle_spl req_id={}", request_id);
+        cu("before:verify_and_settle_spl");
+        let res = verify_and_settle_spl_handler(
+            ctx,
+            request_id,
+            dest_tx_hash,
+            evidence_hash,
+            evidence_url,
+        );
+        cu("after:verify_and_settle_spl");
+        res
     }
 }
