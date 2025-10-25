@@ -1,6 +1,6 @@
-use crate::{
-    constants::COMP_DEF_OFFSET_PLAN_PAYOUT, errors::ErrorCode, SignerAccount, ID, ID_CONST,
-};
+use crate::errors::ErrorCode;
+use crate::{constants::COMP_DEF_OFFSET_PLAN_PAYOUT, SignerAccount};
+use crate::{ID, ID_CONST};
 use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
 
@@ -21,19 +21,20 @@ pub struct QueuePlanPayout<'info> {
     )]
     pub sign_pda_account: Account<'info, SignerAccount>,
 
+    // TIPOS EXACTOS que exige el macro:
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Account<'info, MXEAccount>,
 
     #[account(mut, address = derive_mempool_pda!())]
-    /// CHECK: validated for the Arcium program
+    /// CHECK: validada por constraint
     pub mempool_account: UncheckedAccount<'info>,
 
     #[account(mut, address = derive_execpool_pda!())]
-    /// CHECK: validated for the Arcium program
+    /// CHECK: validada por constraint
     pub executing_pool: UncheckedAccount<'info>,
 
-    #[account(mut, address = derive_comp_pda!(computation_offset))]
-    /// CHECK: validated for the Arcium program
+    #[account(mut)]
+    /// CHECK: Arcium valida seeds en el CPI (QueueComputation)
     pub computation_account: UncheckedAccount<'info>,
 
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PLAN_PAYOUT))]
@@ -57,10 +58,9 @@ pub fn handler(
     computation_offset: u64,
     pub_key: [u8; 32],
     nonce: u128,
-    amount_ct: [u8; 32],        // EncryptedU64(amount)
-    recipient_tag_ct: [u8; 32], // EncryptedU64(recipient_tag)
+    amount_ct: [u8; 32],
+    recipient_tag_ct: [u8; 32],
 ) -> Result<()> {
-    // required for Arcium CPI
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
     let args = vec![
@@ -76,7 +76,5 @@ pub fn handler(
         args,
         None,
         vec![super::callback::PlanPayoutCallback::callback_ix(&[])],
-    )?;
-
-    Ok(())
+    )
 }
