@@ -1,35 +1,35 @@
+// programs/contracts/src/instructions/release_expired_claim.rs
+use anchor_lang::prelude::*;
+
 use crate::errors::ErrorCode;
 use crate::events::BridgeClaimExpired;
 use crate::state::{BridgeConfig, BridgeRequest};
-
-use anchor_lang::prelude::*;
-
-/// Must match the seed used in `claim_request.rs`
-pub const BOND_VAULT_SEED: &[u8] = b"bond";
+// Usa el MISMO seed que en claim_request.rs (evita duplicar la constante)
+use crate::instructions::claim_bridge::BOND_VAULT_SEED;
 
 #[derive(Accounts)]
 #[instruction(request_id: u64)]
 pub struct ReleaseExpiredClaim<'info> {
-    /// Anyone can call this; we don't charge rent or create accounts here.
+    /// Cualquiera puede llamar (no se crean cuentas aquí).
     pub caller: Signer<'info>,
 
-    /// Global config (contains slash_bps, owner as slash collector, etc.)
-    #[account(seeds=[b"config"], bump = config.bump)]
-    pub config: Account<'info, BridgeConfig>,
+    /// Config global (slash_bps, owner = slash collector, etc.)
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, BridgeConfig>>,
 
-    /// BridgeRequest PDA (Variant B: seeds include external `request_owner`)
+    /// BridgeRequest (Variante B: incluye request_owner en seeds)
     #[account(
         mut,
         seeds = [b"request", request_owner.key().as_ref(), &request_id.to_le_bytes()],
         bump = request_pda.bump
     )]
-    pub request_pda: Account<'info, BridgeRequest>,
+    pub request_pda: Box<Account<'info, BridgeRequest>>,
 
-    /// Only used for seeds; in Variant A you wouldn't pass this.
+    /// Solo para seeds (Variante B)
     /// CHECK: seeds-only
     pub request_owner: UncheckedAccount<'info>,
 
-    /// PDA that currently holds the solver's bond in lamports.
+    /// PDA que mantiene el bond del solver (lamports)
     #[account(
         mut,
         seeds = [BOND_VAULT_SEED, &request_id.to_le_bytes()],
@@ -37,37 +37,39 @@ pub struct ReleaseExpiredClaim<'info> {
     )]
     pub bond_vault: SystemAccount<'info>,
 
-    /// We transfer the refund back to the *previous* solver.
-    /// We verify at runtime it matches `request_pda.solver`.
-    /// CHECK: validated at runtime with `require_keys_eq!`
+    /// Reembolso va al *solver anterior*. Validado contra request_pda.solver.
+    /// CHECK: validado en runtime con require_keys_eq!
     #[account(mut)]
     pub prev_solver: UncheckedAccount<'info>,
 
-    /// We send the slash part to the slash collector (use config.owner for simplicity).
-    /// CHECK: address checked against config.owner
+    /// Parte del slash va al collector (para simplicidad, config.owner)
+    /// CHECK: address validada contra config.owner
     #[account(mut, address = config.owner)]
     pub slash_collector: UncheckedAccount<'info>,
 }
 
-pub fn handler(ctx: Context<ReleaseExpiredClaim>, _request_id: u64) -> Result<()> {
+pub fn handler(ctx: Context<ReleaseExpiredClaim>, request_id: u64) -> Result<()> {
     let cfg = &ctx.accounts.config;
     let req = &mut ctx.accounts.request_pda;
 
-    // --- Guards (mirror Solidity behavior) ---
-    // The request must be currently claimed.
+    // --- Guards ---
     require!(req.claimed, ErrorCode::NoClaim);
-    // Must be expired to release.
-    let now = Clock::get()?.unix_timestamp;
-    require!(now > req.claim_deadline, ErrorCode::ActiveClaim); // "ActiveClaim" = not expired
 
-    // prev_solver must match the one recorded in the request.
+    let now = Clock::get()?.unix_timestamp;
+    // Si aún no expiró, sigue activa -> no liberar
+    require!(now > req.claim_deadline, ErrorCode::ActiveClaim);
+
+    // El prev_solver debe coincidir con el solver registrado
     require_keys_eq!(
         ctx.accounts.prev_solver.key(),
         req.solver,
         ErrorCode::InvalidOwner
     );
 
-    // --- Compute slash and refund ---
+    // Debe existir bond para repartir
+    require!(req.bond_lamports > 0, ErrorCode::BondTooLow);
+
+    // --- Cálculo de slash/refund ---
     let bond = req.bond_lamports as u128;
     let slash = bond
         .checked_mul(cfg.slash_bps as u128)
@@ -79,20 +81,19 @@ pub fn handler(ctx: Context<ReleaseExpiredClaim>, _request_id: u64) -> Result<()
     let slash_u64 = u64::try_from(slash).map_err(|_| ErrorCode::MathOverflow)?;
     let refund_u64 = u64::try_from(refund).map_err(|_| ErrorCode::MathOverflow)?;
 
-    // Sanity: make sure the vault has at least the bond.
-    let vault_info = ctx.accounts.bond_vault.to_account_info();
-    let vault_lamports = **vault_info.lamports.borrow();
+    // Sanity: el vault debe tener al menos el bond
+    let vault_lamports = **ctx.accounts.bond_vault.to_account_info().lamports.borrow();
     require!(vault_lamports >= req.bond_lamports, ErrorCode::MathOverflow);
 
-    // --- Move lamports directly (program-owned PDA → system accounts) ---
-    // Subtract from vault
+    // --- Mover lamports (PDA -> cuentas sistema) ---
+    // Resta total del bond al vault
     **ctx
         .accounts
         .bond_vault
         .to_account_info()
         .try_borrow_mut_lamports()? -= req.bond_lamports;
 
-    // Add to collector (slash)
+    // Agrega slash al collector
     if slash_u64 > 0 {
         **ctx
             .accounts
@@ -101,7 +102,7 @@ pub fn handler(ctx: Context<ReleaseExpiredClaim>, _request_id: u64) -> Result<()
             .try_borrow_mut_lamports()? += slash_u64;
     }
 
-    // Add to solver (refund)
+    // Agrega refund al solver
     if refund_u64 > 0 {
         **ctx
             .accounts
@@ -110,20 +111,22 @@ pub fn handler(ctx: Context<ReleaseExpiredClaim>, _request_id: u64) -> Result<()
             .try_borrow_mut_lamports()? += refund_u64;
     }
 
-    // --- Clean request state (free to be claimed again) ---
+    // --- Limpia el estado para permitir un nuevo claim ---
     req.claimed = false;
     req.solver = Pubkey::default();
     req.claim_deadline = 0;
     req.bond_lamports = 0;
 
+    // Evento
     emit!(BridgeClaimExpired {
-        request_id: _request_id,
+        request_id,
         solver: ctx.accounts.prev_solver.key(),
         slashed: slash_u64,
     });
 
     msg!(
-        "expired claim released: slash={}, refund={}",
+        "expired claim released (req={}, slash={}, refund={})",
+        request_id,
         slash_u64,
         refund_u64
     );
