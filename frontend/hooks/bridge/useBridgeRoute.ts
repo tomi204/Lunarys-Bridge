@@ -1,4 +1,3 @@
-// hooks/bridge/useBridgeRoute.ts
 import { useMemo, useState } from "react";
 
 export function useBridgeRoute() {
