@@ -1,106 +1,53 @@
 // lib/bridge/solana/anchor-program.ts
-"use client";
-
-import type { Idl } from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Program, setProvider } from "@coral-xyz/anchor";
+import * as anchor from "@coral-xyz/anchor";
+import type { AnchorProvider } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
-import idl from "@/abi/bridge.json";
-import { RPC_URL, BRIDGE_PROGRAM_ID } from "./env";
+import idl from "@/abi/bridge.json"; // ⚠️ asegúrate que este path y nombre existen
 
-// ---------- Wallet detection ----------
-type WalletLike = {
-  publicKey: PublicKey;
-  signTransaction: (tx: any) => Promise<any>;
-  signAllTransactions?: (txs: any[]) => Promise<any[]>;
-};
+export const BN = anchor.BN;
 
-function detectBrowserWallet(): WalletLike {
-  const w =
-    (window as any)?.solana ??
-    (window as any)?.phantom?.solana ??
-    (window as any)?.appkit?.solana ??
-    (window as any)?.appKit?.solana ??
-    (window as any)?.reown?.solana;
-
-  if (!w) throw new Error("No Solana wallet found (Phantom/AppKit/Reown).");
-  if (!w.publicKey) throw new Error("Wallet is not connected.");
-  if (typeof w.signTransaction !== "function") {
-    throw new Error("Wallet does not expose signTransaction (required by Anchor).");
-  }
-  return {
-    publicKey: w.publicKey,
-    signTransaction: w.signTransaction.bind(w),
-    signAllTransactions: w.signAllTransactions?.bind(w),
-  };
-}
-
-// ---------- Provider helpers ----------
-export function getAnchorProvider(
+/** Conexión a Solana (DEVNET por defecto) */
+export function getSolanaConnection(
   commitment: "processed" | "confirmed" | "finalized" = "confirmed"
-): AnchorProvider {
-  const connection = new Connection(RPC_URL, commitment);
-  const wallet = detectBrowserWallet();
-  const provider = new AnchorProvider(connection, wallet as any, { commitment });
-  setProvider(provider);
-  return provider;
+) {
+  const url =
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.replace(/"/g, "") ||
+    "https://api.devnet.solana.com";
+  return new Connection(url, commitment);
 }
 
-export async function getAnchorProviderOrConnect(
-  commitment: "processed" | "confirmed" | "finalized" = "confirmed"
-): Promise<AnchorProvider> {
-  const raw =
-    (window as any)?.solana ??
-    (window as any)?.phantom?.solana ??
-    (window as any)?.appkit?.solana ??
-    (window as any)?.appKit?.solana ??
-    (window as any)?.reown?.solana;
-  if (!raw) throw new Error("No Solana wallet found (Phantom/AppKit/Reown).");
-  if (!raw.publicKey && typeof raw.connect === "function") await raw.connect();
-  return getAnchorProvider(commitment);
-}
+/** Resuelve el Program ID: .env primero, si no existe usa el address del IDL */
+export function getProgramId(): PublicKey {
+  const fromEnv = process.env.NEXT_PUBLIC_SOLANA_PROGRAM_ID?.replace(/"/g, "");
+  const fromIdl = (idl as any).address as string | undefined;
 
-// ---------- Program (tipos a prueba de versiones) ----------
-type AnyProgramCtor = new (
-  idl: any,
-  programIdOrProvider?: any,
-  maybeProvider?: any
-) => Program<any>;
-
-/**
- * Devuelve el Program del bridge:
- * - Usa BRIDGE_PROGRAM_ID (PublicKey) de ./env
- * - Fuerza la signatura del ctor con cast para esquivar desalineos de @coral-xyz/anchor
- */
-export function getBridgeProgram(
-  opts?: { provider?: AnchorProvider; programId?: PublicKey | string }
-): Program<Idl> {
-  const provider = opts?.provider ?? getAnchorProvider("confirmed");
-  setProvider(provider);
-
-  const pid =
-    typeof opts?.programId === "string"
-      ? new PublicKey(opts!.programId)
-      : (opts?.programId ?? BRIDGE_PROGRAM_ID);
-
-  // Warn si el IDL trae otra address
-  const idlAddr = (idl as any)?.metadata?.address as string | undefined;
-  if (idlAddr && idlAddr !== pid.toBase58()) {
-    console.warn(
-      `[anchor-program] ProgramId mismatch. env=${pid.toBase58()} vs idl=${idlAddr}`
+  if (!fromEnv && !fromIdl) {
+    throw new Error(
+      "Falta Program ID: define NEXT_PUBLIC_SOLANA_PROGRAM_ID o usa un IDL con .address"
     );
   }
-
-  // 🔧 Cast del ctor para tolerar firmas (idl, programId, provider) vs (idl, provider, programId)
-  const ProgramCtor = Program as unknown as AnyProgramCtor;
-
-  // Intento #1: (idl, pid, provider)
-  try {
-    return new ProgramCtor(idl as any, pid, provider) as Program<Idl>;
-  } catch {
-    // Intento #2: (idl, provider, pid) — por si tu @coral-xyz/anchor resuelve esa signatura
-    return new ProgramCtor(idl as any, provider, pid) as Program<Idl>;
+  if (fromEnv && fromIdl && fromEnv !== fromIdl) {
+    console.warn(
+      `[bridge] WARNING: .env (${fromEnv}) ≠ idl.address (${fromIdl}). Se usará el de .env.`
+    );
   }
+  return new PublicKey(fromEnv || fromIdl!);
 }
 
-// Re-exports útiles
-export { BN, PublicKey };
+/** Crea un AnchorProvider desde el adapter de la wallet (Phantom/AppKit). */
+export function getAnchorProvider(
+  wallet: any,
+  commitment: "processed" | "confirmed" | "finalized" = "confirmed"
+): AnchorProvider {
+  if (!wallet) throw new Error("Wallet Solana no encontrada.");
+  const connection = getSolanaConnection(commitment);
+  // Importante: pasa el adapter directamente (NO `new anchor.Wallet(wallet)` en front)
+  return new anchor.AnchorProvider(connection, wallet, { commitment });
+}
+
+/** Devuelve el Program del bridge (forma explícita y determinista) */
+export function getBridgeProgram(provider: AnchorProvider) {
+  if (!provider) throw new Error("Provider inválido.");
+  const programId = getProgramId(); // 8gk2… de tu despliegue
+  return new anchor.Program(idl as anchor.Idl, provider);
+}
