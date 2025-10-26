@@ -5,6 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownUp, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { useFromTokenMeta } from "@/hooks/useFromTokenMeta";
+import { useSplBalance } from "@/hooks/useSplBalance";
+import { toBaseUnits } from "@/lib/bridge/utils";
 
 import { ConstellationBackground } from "@/components/constellation-background";
 import { Footer } from "@/components/footer";
@@ -82,6 +85,7 @@ const USDCLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
   </svg>
 );
 
+
 /* ---------- Constantes UI ---------- */
 
 const chainOptions = [
@@ -131,6 +135,15 @@ export default function BridgePage() {
     canBridge,
   } = useEvmBridge({ amount, selectedToken, solanaDestination: destinationAddress });
 
+  const fromToken = useFromTokenMeta(fromChain, selectedToken);
+  const solMint = fromToken?.kind === "solana" ? fromToken.mint : undefined;
+  const { uiAmountString: splUiBalance } = useSplBalance(solMint);
+
+    // Balance a mostrar según la ruta
+  const displayBalance = isSolToEvm
+  ? (splUiBalance ?? "—")  // cuando es Sol → EVM, mostramos balance SPL
+  : (balance ?? "—");      // cuando es EVM → Sol, mostramos balance EVM
+  
   // Solana INIT (guarda address EVM en on-chain)
   const {
     initiate,
@@ -224,13 +237,27 @@ export default function BridgePage() {
         toast.error("Enter a valid Ethereum address (0x...).");
         return;
       }
+      if (!fromToken || fromToken.kind !== "solana") {
+        toast.error("Token metadata for Solana not resolved.");
+        return;
+      }
+      if (Number.parseFloat(amount) <= 0) {
+        toast.error("Enter an amount greater than zero.");
+        return;
+      }
+  
       const ethRecipient = ethereumDestination.trim();
+  
+      // 👇 NO enviar amountLocked. Pasar monto humano + decimales + mint SPL
       const res = await initiate({
-        requestId: 0n,        // ajustá si usás contador global
+        requestId: 0n,
         ethRecipient,
-        amountLocked: 0n,     // demo; poné el real si tu handler lo requiere
-        skipSim: false,
+        humanAmount: amount,
+        decimals: fromToken.decimals,
+        splMint: fromToken.mint,
+        skipSim: true,              // 👈 FORZAR envío (sin simulate)
       });
+  
       if (res.sig) {
         toast.info("Initiate submitted", {
           description: `Request: ${res.requestPda.slice(0, 8)}…`,
@@ -247,6 +274,7 @@ export default function BridgePage() {
       }
       return;
     }
+  
     // EVM → Sol
     return bridge();
   };
@@ -289,12 +317,12 @@ export default function BridgePage() {
       {phase === "bridging" && (
         <ChainInfo fromChain={fromChain} toChain={toChain} tokenSymbol={selectedToken} amount={amount} />
       )}
-
+  
       <ConstellationBackground className="z-0" particleCount={220} maxLineDistance={200} />
       <div className="absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(56,226,255,0.25),transparent_60%)]" />
       <div className="absolute bottom-[-20%] left-[15%] h-[420px] w-[420px] rounded-full bg-violet-500/25 blur-[140px]" />
       <div className="absolute top-[30%] right-[-5%] h-[460px] w-[460px] rounded-full bg-cyan-500/25 blur-[140px]" />
-
+  
       <header className="relative z-20">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-8">
           <Link href="/" className="flex items-center gap-3">
@@ -313,7 +341,7 @@ export default function BridgePage() {
           </div>
         </div>
       </header>
-
+  
       <main className="relative z-10 px-6 pb-24">
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 pt-12 text-center">
           <div className="flex flex-col items-center gap-3">
@@ -324,7 +352,7 @@ export default function BridgePage() {
               <InlineMatrixText text="Launch a private bridge" initialDelay={500} letterAnimationDuration={400} letterInterval={60} />
             </h1>
           </div>
-
+  
           <Card className="w-full border-white/10 bg-white/5 shadow-[0_45px_140px_-80px_rgba(56,226,255,0.8)]">
             <CardContent className="space-y-8 p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
@@ -334,7 +362,7 @@ export default function BridgePage() {
                     <Label className="text-xs uppercase tracking-widest text-gray-400">From</Label>
                     {fromDetails ? <span className="text-xs text-gray-500">{fromDetails.tagline}</span> : null}
                   </div>
-
+  
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={fromChain} onValueChange={setFromChain}>
                       <SelectTrigger className="w-[220px] border-white/10 bg-white/10 px-5 py-4 text-base font-semibold text-white">
@@ -354,27 +382,31 @@ export default function BridgePage() {
                         ))}
                       </SelectContent>
                     </Select>
-
+  
                     <Select value={selectedToken} onValueChange={setSelectedToken}>
                       <SelectTrigger className="w-[180px] border-white/10 bg-white/10 px-2 py-4 text-base font-semibold text-white">
-                        <div className="flex items-center gap-3"><USDCLogo className="w-6 h-6 shrink-0" /><SelectValue /></div>
+                        <div className="flex items-center gap-3">
+                          <USDCLogo className="w-6 h-6 shrink-0" />
+                          <SelectValue />
+                        </div>
                       </SelectTrigger>
                       <SelectContent className="bg-[#030712] p-3 text-white border-white/10">
-                        {tokenOptions.map((token) => (
-                          <SelectItem key={token.value} value={token.value} className="py-4 px-3">
-                            <div className="flex items-center">
-                              <div className="flex flex-col gap-1">
-                                <span className="text-sm font-medium">{token.label}</span>
-                                <span className="text-xs text-gray-400">{token.subtitle}</span>
-                              </div>
+                        {/* Por ahora 1 token: USDC. La "subtitle" viene de fromToken.label */}
+                        <SelectItem value="USDC" className="py-4 px-3">
+                          <div className="flex items-center">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-medium">USDC</span>
+                              <span className="text-xs text-gray-400">
+                                {fromToken?.label ?? "USD Coin"}
+                              </span>
                             </div>
-                          </SelectItem>
-                        ))}
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {/* Amount (afecta EVM → Sol) */}
+  
+                  {/* Amount */}
                   <div className="space-y-2">
                     <Input
                       type="number"
@@ -386,15 +418,15 @@ export default function BridgePage() {
                       placeholder="0.00"
                     />
                   </div>
-
+  
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex flex-col gap-1.5">
                       <span className="text-xs text-gray-500 uppercase tracking-wider">Balance</span>
                       <div className="flex items-center gap-2">
                         <USDCLogo className="w-5 h-5 opacity-70" />
                         <span className="text-sm font-medium text-gray-300">
-                          {Number.isFinite(Number(balance))
-                            ? `${Number(balance).toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 })} ${selectedToken}`
+                          {Number.isFinite(Number(displayBalance))
+                            ? `${Number(displayBalance).toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 })} ${selectedToken}`
                             : "—"}
                         </span>
                       </div>
@@ -402,14 +434,14 @@ export default function BridgePage() {
                     <Button
                       variant="ghost"
                       onClick={handleMaxClick}
-                      disabled={!balance || isNaN(Number(balance))}
+                      disabled={!displayBalance || isNaN(Number(displayBalance))}
                       className="rounded-lg px-5 py-2.5 text-sm font-semibold text-cyan-400 hover:bg-cyan-400/10 hover:text-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Max
                     </Button>
                   </div>
                 </div>
-
+  
                 {/* Middle swap button */}
                 <div className="flex items-center justify-center">
                   <Button
@@ -422,14 +454,14 @@ export default function BridgePage() {
                     <ArrowDownUp className="h-6 w-6" />
                   </Button>
                 </div>
-
+  
                 {/* Right panel - To */}
                 <div className="space-y-6 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs uppercase tracking-widest text-gray-400">To</Label>
                     {toDetails ? <span className="text-xs text-gray-500">{toDetails.tagline}</span> : null}
                   </div>
-
+  
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={toChain} onValueChange={setToChain}>
                       <SelectTrigger className="w-[220px] border-white/10 bg-white/10 px-5 py-4 text-base font-semibold text-white">
@@ -449,13 +481,13 @@ export default function BridgePage() {
                         ))}
                       </SelectContent>
                     </Select>
-
+  
                     <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-5 py-3.5 text-sm font-medium text-gray-300">
                       <USDCLogo className="w-5 h-5 shrink-0" />
                       <span>Receive · {selectedToken}</span>
                     </div>
                   </div>
-
+  
                   {/* Fees summary */}
                   <div className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-white/10">
@@ -465,7 +497,7 @@ export default function BridgePage() {
                         <span className="text-xl font-semibold text-white">{estimatedReceive} {selectedToken}</span>
                       </div>
                     </div>
-
+  
                     <div className="space-y-3.5 text-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400">Protocol fee (0.25%)</span>
@@ -483,7 +515,7 @@ export default function BridgePage() {
                       </div>
                     </div>
                   </div>
-
+  
                   {/* Destination inputs */}
                   {isEvmToSol && (
                     <div className="space-y-3">
@@ -513,7 +545,7 @@ export default function BridgePage() {
                       )}
                     </div>
                   )}
-
+  
                   {isSolToEvm && (
                     <div className="space-y-3">
                       <Label className="text-xs uppercase tracking-widest text-gray-400">Ethereum destination address</Label>
@@ -542,7 +574,7 @@ export default function BridgePage() {
                       )}
                     </div>
                   )}
-
+  
                   {/* Inline debug (sólo útil en EVM→Sol) */}
                   {isEvmToSol && (
                     <div className="mt-2">
@@ -564,7 +596,7 @@ export default function BridgePage() {
                   )}
                 </div>
               </div>
-
+  
               {/* Action */}
               <div className="space-y-4 pt-4">
                 <Button
@@ -589,21 +621,21 @@ export default function BridgePage() {
                   )}
                   {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
                 </Button>
-
+  
                 {/* Mensajes informativos */}
                 {helperMessage && (
                   <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
                     <p className="text-sm leading-relaxed text-blue-300">{helperMessage}</p>
                   </div>
                 )}
-
+  
                 {/* Errores de los hooks */}
                 {(solErr || evmErr) && (
                   <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
                     <p className="text-sm leading-relaxed text-red-400">{solErr || evmErr}</p>
                   </div>
                 )}
-
+  
                 {/* Feedback simple para Sol→EVM (init) */}
                 {(lastInitSig || lastRequestPda) && (
                   <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
@@ -615,7 +647,7 @@ export default function BridgePage() {
               </div>
             </CardContent>
           </Card>
-
+  
           <div className="grid w-full gap-4 text-sm text-gray-400 sm:grid-cols-3">
             {quickStats.map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-center backdrop-blur">
@@ -626,7 +658,7 @@ export default function BridgePage() {
           </div>
         </div>
       </main>
-
+  
       <Footer />
     </div>
   );
