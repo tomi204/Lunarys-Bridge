@@ -1,73 +1,184 @@
 {
+  "accounts": [
+    {
+      "discriminator": [40, 206, 51, 233, 246, 40, 178, 85],
+      "name": "BridgeConfig"
+    },
+    {
+      "discriminator": [188, 193, 134, 152, 141, 18, 172, 167],
+      "name": "BridgeRequest"
+    },
+    {
+      "discriminator": [152, 171, 158, 195, 75, 61, 51, 8],
+      "name": "ClockAccount"
+    },
+    {
+      "discriminator": [236, 225, 118, 228, 173, 106, 18, 60],
+      "name": "Cluster"
+    },
+    {
+      "discriminator": [245, 176, 217, 221, 253, 104, 172, 200],
+      "name": "ComputationDefinitionAccount"
+    },
+    {
+      "discriminator": [172, 38, 77, 146, 148, 5, 51, 242],
+      "name": "FeePool"
+    },
+    {
+      "discriminator": [103, 26, 85, 250, 179, 159, 17, 117],
+      "name": "MXEAccount"
+    },
+    {
+      "discriminator": [127, 212, 7, 180, 17, 50, 249, 193],
+      "name": "SignerAccount"
+    }
+  ],
   "address": "8gk2T4FJYaPUWHDzm5aKccu8HJSpEXYu3rFAoeb7FDE7",
-  "metadata": {
-    "name": "contracts",
-    "version": "0.1.0",
-    "spec": "0.1.0",
-    "description": "Created with Arcium & Anchor"
-  },
+  "errors": [
+    {
+      "code": 6000,
+      "msg": "The computation was aborted",
+      "name": "AbortedComputation"
+    },
+    {
+      "code": 6001,
+      "msg": "Cluster not set",
+      "name": "ClusterNotSet"
+    },
+    {
+      "code": 6002,
+      "msg": "Invalid token mint",
+      "name": "InvalidMint"
+    },
+    {
+      "code": 6003,
+      "msg": "Invalid token owner",
+      "name": "InvalidOwner"
+    },
+    {
+      "code": 6004,
+      "msg": "Only owner can modify config",
+      "name": "OnlyOwner"
+    },
+    {
+      "code": 6005,
+      "msg": "Request already finalized",
+      "name": "RequestAlreadyFinalized"
+    },
+    {
+      "code": 6006,
+      "msg": "Request currently has an active claim that is not expired yet",
+      "name": "ActiveClaimNotExpired"
+    },
+    {
+      "code": 6007,
+      "msg": "Bond must be greater than zero",
+      "name": "ZeroBondNotAllowed"
+    },
+    {
+      "code": 6008,
+      "msg": "Bond is too low",
+      "name": "BondTooLow"
+    },
+    {
+      "code": 6009,
+      "msg": "Active claim already exists",
+      "name": "ActiveClaim"
+    },
+    {
+      "code": 6010,
+      "msg": "No claim exists",
+      "name": "NoClaim"
+    },
+    {
+      "code": 6011,
+      "msg": "Claim has expired",
+      "name": "ClaimExpired"
+    },
+    {
+      "code": 6012,
+      "msg": "Math overflow",
+      "name": "MathOverflow"
+    },
+    {
+      "code": 6013,
+      "msg": "Already finalized",
+      "name": "AlreadyFinalized"
+    },
+    {
+      "code": 6014,
+      "msg": "Claim window out of range",
+      "name": "ClaimWindowOutOfRange"
+    },
+    {
+      "code": 6015,
+      "msg": "Insufficient escrow balance",
+      "name": "InsufficientEscrowBalance"
+    }
+  ],
+  "events": [
+    {
+      "discriminator": [221, 140, 107, 12, 170, 202, 140, 231],
+      "name": "AttestationQueued"
+    },
+    {
+      "discriminator": [109, 187, 58, 169, 157, 65, 75, 128],
+      "name": "BridgeClaimExpired"
+    },
+    {
+      "discriminator": [183, 16, 28, 253, 195, 2, 244, 153],
+      "name": "BridgeClaimed"
+    },
+    {
+      "discriminator": [248, 64, 170, 255, 141, 147, 160, 240],
+      "name": "BridgeInitiated"
+    },
+    {
+      "discriminator": [247, 4, 241, 226, 72, 252, 9, 188],
+      "name": "BridgePaidToSolver"
+    },
+    {
+      "discriminator": [117, 189, 84, 22, 19, 71, 27, 79],
+      "name": "BridgeVerifiedUrl"
+    },
+    {
+      "discriminator": [233, 50, 253, 22, 75, 145, 34, 86],
+      "name": "IncomingBridgeDelivered"
+    },
+    {
+      "discriminator": [131, 99, 129, 7, 243, 196, 133, 22],
+      "name": "SolverBondRefunded"
+    }
+  ],
   "instructions": [
     {
-      "name": "claim_bridge",
-      "discriminator": [
-        181,
-        91,
-        207,
-        9,
-        222,
-        177,
-        177,
-        122
-      ],
       "accounts": [
         {
+          "docs": ["Solver that claims and pays the bond"],
           "name": "solver",
-          "docs": [
-            "Solver that claims and pays the bond"
-          ],
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
+          "docs": ["Global config"],
           "name": "config",
-          "docs": [
-            "Global config"
-          ],
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
           }
         },
         {
+          "docs": ["BridgeRequest (Variant B: seeds include external owner)"],
           "name": "request_pda",
-          "docs": [
-            "BridgeRequest (Variant B: seeds include external owner)"
-          ],
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  113,
-                  117,
-                  101,
-                  115,
-                  116
-                ]
+                "value": [114, 101, 113, 117, 101, 115, 116]
               },
               {
                 "kind": "account",
@@ -78,63 +189,43 @@
                 "path": "request_id"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
-          "name": "request_owner",
-          "docs": [
-            "Only for seeds (Variant B)"
-          ]
+          "docs": ["Only for seeds (Variant B)"],
+          "name": "request_owner"
         },
         {
+          "docs": ["Vault (System-owned PDA) that holds the bond"],
           "name": "bond_vault",
-          "docs": [
-            "Vault (System-owned PDA) that holds the bond"
-          ],
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  98,
-                  111,
-                  110,
-                  100
-                ]
+                "value": [98, 111, 110, 100]
               },
               {
                 "kind": "arg",
                 "path": "request_id"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "sign_pda_account",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
+                  83, 105, 103, 110, 101, 114, 65, 99, 99, 111, 117, 110, 116
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "mxe_account"
@@ -159,21 +250,21 @@
           "writable": true
         },
         {
+          "address": "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3",
           "name": "pool_account",
-          "writable": true,
-          "address": "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3"
+          "writable": true
         },
         {
-          "name": "clock_account",
-          "address": "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65"
+          "address": "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65",
+          "name": "clock_account"
         },
         {
-          "name": "arcium_program",
-          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6"
+          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6",
+          "name": "arcium_program"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -188,55 +279,42 @@
         {
           "name": "solver_x25519",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         }
-      ]
+      ],
+      "discriminator": [181, 91, 207, 9, 222, 177, 177, 122],
+      "name": "claim_bridge"
     },
     {
-      "name": "deliver_tokens",
-      "discriminator": [
-        141,
-        211,
-        185,
-        29,
-        14,
-        221,
-        210,
-        113
-      ],
       "accounts": [
         {
+          "docs": ["Relayer (authorized) and payer of rent/ATAs"],
           "name": "relayer",
-          "docs": [
-            "Relayer (authorized) and payer of rent/ATAs"
-          ],
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "mint",
-          "docs": [
-            "Token mint (USDC/USDT)"
-          ]
-        },
-        {
-          "name": "escrow_token",
-          "docs": [
-            "Escrow that holds the locked tokens (owner = signing PDA)"
-          ],
+          "signer": true,
           "writable": true
         },
         {
+          "docs": ["Token mint (USDC/USDT)"],
+          "name": "mint"
+        },
+        {
+          "docs": ["Escrow that holds the locked tokens (owner = signing PDA)"],
+          "name": "escrow_token",
+          "writable": true
+        },
+        {
+          "docs": ["Recipient's ATA (created if it doesn't exist)"],
           "name": "recipient_token",
-          "docs": [
-            "Recipient's ATA (created if it doesn't exist)"
-          ],
-          "writable": true,
           "pda": {
+            "program": {
+              "kind": "const",
+              "value": [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89
+              ]
+            },
             "seeds": [
               {
                 "kind": "account",
@@ -245,148 +323,60 @@
               {
                 "kind": "const",
                 "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
+                  6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206,
+                  235, 121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140,
+                  245, 133, 126, 255, 0, 169
                 ]
               },
               {
                 "kind": "account",
                 "path": "mint"
               }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+            ]
+          },
+          "writable": true
         },
         {
-          "name": "recipient",
-          "docs": [
-            "Public recipient"
-          ]
+          "docs": ["Public recipient"],
+          "name": "recipient"
         },
         {
+          "docs": ["Global config (used to authorize the relayer)"],
           "name": "config",
-          "docs": [
-            "Global config (used to authorize the relayer)"
-          ],
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
           }
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
         },
         {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+          "name": "associated_token_program"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         },
         {
           "name": "sign_pda_account",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
+                  83, 105, 103, 110, 101, 114, 65, 99, 99, 111, 117, 110, 116
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         }
       ],
       "args": [
@@ -394,113 +384,73 @@
           "name": "amount",
           "type": "u64"
         }
-      ]
+      ],
+      "discriminator": [141, 211, 185, 29, 14, 221, 210, 113],
+      "name": "deliver_tokens"
     },
     {
-      "name": "deliver_tokens_sol",
-      "discriminator": [
-        231,
-        203,
-        195,
-        215,
-        141,
-        107,
-        103,
-        255
-      ],
       "accounts": [
         {
+          "docs": ["Authorized relayer (must be the owner in the config)"],
           "name": "relayer",
-          "docs": [
-            "Authorized relayer (must be the owner in the config)"
-          ],
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
+          "docs": ["Global config (only to authorize the relayer)"],
           "name": "config",
-          "docs": [
-            "Global config (only to authorize the relayer)"
-          ],
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
           }
         },
         {
+          "docs": ["WSOL escrow (mint = NATIVE_MINT) owned by the signing PDA"],
           "name": "escrow_wsol",
-          "docs": [
-            "WSOL escrow (mint = NATIVE_MINT) owned by the signing PDA"
-          ],
           "writable": true
         },
         {
-          "name": "recipient_wsol",
           "docs": [
             "Recipient's WSOL account (can be their ATA or any WSOL TokenAccount)"
           ],
+          "name": "recipient_wsol",
           "writable": true
         },
         {
-          "name": "recipient",
-          "docs": [
-            "Recipient's public wallet (owner of `recipient_wsol`)"
-          ]
+          "docs": ["Recipient's public wallet (owner of `recipient_wsol`)"],
+          "name": "recipient"
         },
         {
+          "docs": ["Account that receives the rent if the escrow is closed"],
           "name": "escrow_refund_destination",
-          "docs": [
-            "Account that receives the rent if the escrow is closed"
-          ],
           "writable": true
         },
         {
+          "docs": ["Signing PDA used by Arcium (contains the bump)"],
           "name": "sign_pda_account",
-          "docs": [
-            "Signing PDA used by Arcium (contains the bump)"
-          ],
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
+                  83, 105, 103, 110, 101, 114, 65, 99, 99, 111, 117, 110, 116
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -508,48 +458,32 @@
           "name": "amount",
           "type": "u64"
         }
-      ]
+      ],
+      "discriminator": [231, 203, 195, 215, 141, 107, 103, 255],
+      "name": "deliver_tokens_sol"
     },
     {
-      "name": "init_config",
-      "discriminator": [
-        23,
-        235,
-        115,
-        232,
-        168,
-        96,
-        1,
-        231
-      ],
       "accounts": [
         {
           "name": "payer",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
           "name": "config",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -577,25 +511,16 @@
           "name": "slash_bps",
           "type": "u16"
         }
-      ]
+      ],
+      "discriminator": [23, 235, 115, 232, 168, 96, 1, 231],
+      "name": "init_config"
     },
     {
-      "name": "init_plan_payout_comp_def",
-      "discriminator": [
-        83,
-        60,
-        159,
-        71,
-        21,
-        45,
-        101,
-        200
-      ],
       "accounts": [
         {
           "name": "payer",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
           "name": "mxe_account",
@@ -606,33 +531,24 @@
           "writable": true
         },
         {
-          "name": "arcium_program",
-          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6"
+          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6",
+          "name": "arcium_program"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
-      "args": []
+      "args": [],
+      "discriminator": [83, 60, 159, 71, 21, 45, 101, 200],
+      "name": "init_plan_payout_comp_def"
     },
     {
-      "name": "init_reseal_comp_def",
-      "discriminator": [
-        172,
-        171,
-        211,
-        140,
-        9,
-        1,
-        183,
-        70
-      ],
       "accounts": [
         {
           "name": "payer",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
           "name": "mxe_account",
@@ -643,33 +559,24 @@
           "writable": true
         },
         {
-          "name": "arcium_program",
-          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6"
+          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6",
+          "name": "arcium_program"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
-      "args": []
+      "args": [],
+      "discriminator": [172, 171, 211, 140, 9, 1, 183, 70],
+      "name": "init_reseal_comp_def"
     },
     {
-      "name": "initiate_bridge",
-      "discriminator": [
-        238,
-        221,
-        172,
-        147,
-        44,
-        39,
-        114,
-        215
-      ],
       "accounts": [
         {
           "name": "payer",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
           "name": "user_token",
@@ -683,8 +590,8 @@
           "writable": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
         },
         {
           "name": "config",
@@ -692,34 +599,18 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
           }
         },
         {
           "name": "request_pda",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  113,
-                  117,
-                  101,
-                  115,
-                  116
-                ]
+                "value": [114, 101, 113, 117, 101, 115, 116]
               },
               {
                 "kind": "account",
@@ -730,33 +621,22 @@
                 "path": "request_id"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "sign_pda_account",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
+                  83, 105, 103, 110, 101, 114, 65, 99, 99, 111, 117, 110, 116
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "mxe_account"
@@ -781,21 +661,21 @@
           "writable": true
         },
         {
+          "address": "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3",
           "name": "pool_account",
-          "writable": true,
-          "address": "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3"
+          "writable": true
         },
         {
-          "name": "clock_account",
-          "address": "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65"
+          "address": "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65",
+          "name": "clock_account"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         },
         {
-          "name": "arcium_program",
-          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6"
+          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6",
+          "name": "arcium_program"
         }
       ],
       "args": [
@@ -810,80 +690,53 @@
         {
           "name": "client_pubkey",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "nonce",
           "type": {
-            "array": [
-              "u8",
-              16
-            ]
+            "array": ["u8", 16]
           }
         },
         {
           "name": "destination_ct0",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "destination_ct1",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "destination_ct2",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "destination_ct3",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "amount",
           "type": "u64"
         }
-      ]
+      ],
+      "discriminator": [238, 221, 172, 147, 44, 39, 114, 215],
+      "name": "initiate_bridge"
     },
     {
-      "name": "initiate_bridge_sol",
-      "discriminator": [
-        187,
-        141,
-        141,
-        133,
-        176,
-        255,
-        95,
-        113
-      ],
       "accounts": [
         {
           "name": "payer",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
           "name": "config",
@@ -891,34 +744,18 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
           }
         },
         {
           "name": "request_pda",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  113,
-                  117,
-                  101,
-                  115,
-                  116
-                ]
+                "value": [114, 101, 113, 117, 101, 115, 116]
               },
               {
                 "kind": "account",
@@ -929,45 +766,34 @@
                 "path": "request_id"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "escrow_wsol",
           "writable": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         },
         {
           "name": "sign_pda_account",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
+                  83, 105, 103, 110, 101, 114, 65, 99, 99, 111, 117, 110, 116
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "mxe_account"
@@ -992,17 +818,17 @@
           "writable": true
         },
         {
+          "address": "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3",
           "name": "pool_account",
-          "writable": true,
-          "address": "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3"
+          "writable": true
         },
         {
-          "name": "clock_account",
-          "address": "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65"
+          "address": "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65",
+          "name": "clock_account"
         },
         {
-          "name": "arcium_program",
-          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6"
+          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6",
+          "name": "arcium_program"
         }
       ],
       "args": [
@@ -1017,86 +843,59 @@
         {
           "name": "client_pubkey",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "nonce",
           "type": {
-            "array": [
-              "u8",
-              16
-            ]
+            "array": ["u8", 16]
           }
         },
         {
           "name": "destination_ct0",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "destination_ct1",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "destination_ct2",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "destination_ct3",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "lamports",
           "type": "u64"
         }
-      ]
+      ],
+      "discriminator": [187, 141, 141, 133, 176, 255, 95, 113],
+      "name": "initiate_bridge_sol"
     },
     {
-      "name": "plan_payout_callback",
-      "discriminator": [
-        143,
-        184,
-        65,
-        84,
-        244,
-        236,
-        158,
-        7
-      ],
       "accounts": [
         {
-          "name": "arcium_program",
-          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6"
+          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6",
+          "name": "arcium_program"
         },
         {
           "name": "comp_def_account"
         },
         {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          "address": "Sysvar1nstructions1111111111111111111111111",
+          "name": "instructions_sysvar"
         }
       ],
       "args": [
@@ -1104,7 +903,6 @@
           "name": "output",
           "type": {
             "defined": {
-              "name": "ComputationOutputs",
               "generics": [
                 {
                   "kind": "type",
@@ -1114,55 +912,35 @@
                     }
                   }
                 }
-              ]
+              ],
+              "name": "ComputationOutputs"
             }
           }
         }
-      ]
+      ],
+      "discriminator": [143, 184, 65, 84, 244, 236, 158, 7],
+      "name": "plan_payout_callback"
     },
     {
-      "name": "queue_plan_payout",
-      "discriminator": [
-        154,
-        96,
-        174,
-        190,
-        29,
-        217,
-        154,
-        14
-      ],
       "accounts": [
         {
           "name": "payer",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
           "name": "sign_pda_account",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
+                  83, 105, 103, 110, 101, 114, 65, 99, 99, 111, 117, 110, 116
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "mxe_account"
@@ -1187,21 +965,21 @@
           "writable": true
         },
         {
+          "address": "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3",
           "name": "pool_account",
-          "writable": true,
-          "address": "7MGSS4iKNM4sVib7bDZDJhVqB6EcchPwVnTKenCY1jt3"
+          "writable": true
         },
         {
-          "name": "clock_account",
-          "address": "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65"
+          "address": "FHriyvoZotYiFnbUzKFjzRSb2NiaC8RPWY7jtKuKhg65",
+          "name": "clock_account"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         },
         {
-          "name": "arcium_program",
-          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6"
+          "address": "BKck65TgoKRokMjQM3datB9oRwJ8rAj2jxPXvHXUvcL6",
+          "name": "arcium_program"
         }
       ],
       "args": [
@@ -1212,10 +990,7 @@
         {
           "name": "pub_key",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
@@ -1225,83 +1000,52 @@
         {
           "name": "amount_ct",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "recipient_tag_ct",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         }
-      ]
+      ],
+      "discriminator": [154, 96, 174, 190, 29, 217, 154, 14],
+      "name": "queue_plan_payout"
     },
     {
-      "name": "release_expired_claim",
-      "discriminator": [
-        96,
-        186,
-        51,
-        86,
-        115,
-        9,
-        152,
-        145
-      ],
       "accounts": [
         {
-          "name": "caller",
           "docs": [
             "Anyone can call this; we don't charge rent or create accounts here."
           ],
+          "name": "caller",
           "signer": true
         },
         {
-          "name": "config",
           "docs": [
             "Global config (contains slash_bps, owner as slash collector, etc.)"
           ],
+          "name": "config",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
           }
         },
         {
-          "name": "request_pda",
           "docs": [
             "BridgeRequest PDA (Variant B: seeds include external `request_owner`)"
           ],
-          "writable": true,
+          "name": "request_pda",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  113,
-                  117,
-                  101,
-                  115,
-                  116
-                ]
+                "value": [114, 101, 113, 117, 101, 115, 116]
               },
               {
                 "kind": "account",
@@ -1312,51 +1056,43 @@
                 "path": "request_id"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
-          "name": "request_owner",
-          "docs": [
-            "Only used for seeds; in Variant A you wouldn't pass this."
-          ]
+          "docs": ["Only used for seeds; in Variant A you wouldn't pass this."],
+          "name": "request_owner"
         },
         {
+          "docs": ["PDA that currently holds the solver's bond in lamports."],
           "name": "bond_vault",
-          "docs": [
-            "PDA that currently holds the solver's bond in lamports."
-          ],
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  98,
-                  111,
-                  110,
-                  100
-                ]
+                "value": [98, 111, 110, 100]
               },
               {
                 "kind": "arg",
                 "path": "request_id"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
-          "name": "prev_solver",
           "docs": [
             "We transfer the refund back to the *previous* solver.",
             "We verify at runtime it matches `request_pda.solver`."
           ],
+          "name": "prev_solver",
           "writable": true
         },
         {
-          "name": "slash_collector",
           "docs": [
             "We send the slash part to the slash collector (use config.owner for simplicity)."
           ],
+          "name": "slash_collector",
           "writable": true
         }
       ],
@@ -1365,44 +1101,28 @@
           "name": "request_id",
           "type": "u64"
         }
-      ]
+      ],
+      "discriminator": [96, 186, 51, 86, 115, 9, 152, 145],
+      "name": "release_expired_claim"
     },
     {
-      "name": "set_config",
-      "discriminator": [
-        108,
-        158,
-        154,
-        175,
-        212,
-        98,
-        52,
-        66
-      ],
       "accounts": [
         {
           "name": "authority",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
           "name": "config",
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
-          }
+          },
+          "writable": true
         }
       ],
       "args": [
@@ -1442,69 +1162,40 @@
             "option": "u16"
           }
         }
-      ]
+      ],
+      "discriminator": [108, 158, 154, 175, 212, 98, 52, 66],
+      "name": "set_config"
     },
     {
-      "name": "verify_and_settle_spl",
-      "discriminator": [
-        194,
-        249,
-        231,
-        21,
-        236,
-        22,
-        123,
-        19
-      ],
       "accounts": [
         {
+          "docs": ["Relayer/verifier. Must be the configured owner."],
           "name": "relayer",
-          "docs": [
-            "Relayer/verifier. Must be the configured owner."
-          ],
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
+          "docs": ["Global config"],
           "name": "config",
-          "docs": [
-            "Global config"
-          ],
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
-                ]
+                "value": [99, 111, 110, 102, 105, 103]
               }
             ]
           }
         },
         {
-          "name": "request_pda",
           "docs": [
             "Request to settle. Variant B (includes request_owner in seeds)"
           ],
-          "writable": true,
+          "name": "request_pda",
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  114,
-                  101,
-                  113,
-                  117,
-                  101,
-                  115,
-                  116
-                ]
+                "value": [114, 101, 113, 117, 101, 115, 116]
               },
               {
                 "kind": "account",
@@ -1515,101 +1206,73 @@
                 "path": "request_id"
               }
             ]
-          }
-        },
-        {
-          "name": "request_owner",
-          "docs": [
-            "Only for seeds (Variant B)"
-          ]
-        },
-        {
-          "name": "mint",
-          "docs": [
-            "Mint of the escrowed token (USDC/USDT)"
-          ]
-        },
-        {
-          "name": "escrow_token",
-          "docs": [
-            "Vault with the tokens (owner = PDA signer)"
-          ],
+          },
           "writable": true
         },
         {
-          "name": "solver_token",
+          "docs": ["Only for seeds (Variant B)"],
+          "name": "request_owner"
+        },
+        {
+          "docs": ["Mint of the escrowed token (USDC/USDT)"],
+          "name": "mint"
+        },
+        {
+          "docs": ["Vault with the tokens (owner = PDA signer)"],
+          "name": "escrow_token",
+          "writable": true
+        },
+        {
           "docs": [
             "Token account of the winning solver (same mint and owner = request_pda.solver)"
           ],
+          "name": "solver_token",
           "writable": true
         },
         {
+          "docs": ["PDA signer (same used in deposit_*)"],
           "name": "sign_pda_account",
-          "docs": [
-            "PDA signer (same used in deposit_*)"
-          ],
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
+                  83, 105, 103, 110, 101, 114, 65, 99, 99, 111, 117, 110, 116
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
+          "docs": ["PDA (System) with the solver's bond"],
           "name": "bond_vault",
-          "docs": [
-            "PDA (System) with the solver's bond"
-          ],
-          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
-                "value": [
-                  98,
-                  111,
-                  110,
-                  100
-                ]
+                "value": [98, 111, 110, 100]
               },
               {
                 "kind": "arg",
                 "path": "request_id"
               }
             ]
-          }
-        },
-        {
-          "name": "solver_wallet",
-          "docs": [
-            "Solver's wallet (to refund bond)"
-          ],
+          },
           "writable": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "docs": ["Solver's wallet (to refund bond)"],
+          "name": "solver_wallet",
+          "writable": true
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
+        },
+        {
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -1620,327 +1283,34 @@
         {
           "name": "dest_tx_hash",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "evidence_hash",
           "type": {
-            "array": [
-              "u8",
-              32
-            ]
+            "array": ["u8", 32]
           }
         },
         {
           "name": "evidence_url",
           "type": "string"
         }
-      ]
+      ],
+      "discriminator": [194, 249, 231, 21, 236, 22, 123, 19],
+      "name": "verify_and_settle_spl"
     }
   ],
-  "accounts": [
-    {
-      "name": "BridgeConfig",
-      "discriminator": [
-        40,
-        206,
-        51,
-        233,
-        246,
-        40,
-        178,
-        85
-      ]
-    },
-    {
-      "name": "BridgeRequest",
-      "discriminator": [
-        188,
-        193,
-        134,
-        152,
-        141,
-        18,
-        172,
-        167
-      ]
-    },
-    {
-      "name": "ClockAccount",
-      "discriminator": [
-        152,
-        171,
-        158,
-        195,
-        75,
-        61,
-        51,
-        8
-      ]
-    },
-    {
-      "name": "Cluster",
-      "discriminator": [
-        236,
-        225,
-        118,
-        228,
-        173,
-        106,
-        18,
-        60
-      ]
-    },
-    {
-      "name": "ComputationDefinitionAccount",
-      "discriminator": [
-        245,
-        176,
-        217,
-        221,
-        253,
-        104,
-        172,
-        200
-      ]
-    },
-    {
-      "name": "FeePool",
-      "discriminator": [
-        172,
-        38,
-        77,
-        146,
-        148,
-        5,
-        51,
-        242
-      ]
-    },
-    {
-      "name": "MXEAccount",
-      "discriminator": [
-        103,
-        26,
-        85,
-        250,
-        179,
-        159,
-        17,
-        117
-      ]
-    },
-    {
-      "name": "SignerAccount",
-      "discriminator": [
-        127,
-        212,
-        7,
-        180,
-        17,
-        50,
-        249,
-        193
-      ]
-    }
-  ],
-  "events": [
-    {
-      "name": "AttestationQueued",
-      "discriminator": [
-        221,
-        140,
-        107,
-        12,
-        170,
-        202,
-        140,
-        231
-      ]
-    },
-    {
-      "name": "BridgeClaimExpired",
-      "discriminator": [
-        109,
-        187,
-        58,
-        169,
-        157,
-        65,
-        75,
-        128
-      ]
-    },
-    {
-      "name": "BridgeClaimed",
-      "discriminator": [
-        183,
-        16,
-        28,
-        253,
-        195,
-        2,
-        244,
-        153
-      ]
-    },
-    {
-      "name": "BridgeInitiated",
-      "discriminator": [
-        248,
-        64,
-        170,
-        255,
-        141,
-        147,
-        160,
-        240
-      ]
-    },
-    {
-      "name": "BridgePaidToSolver",
-      "discriminator": [
-        247,
-        4,
-        241,
-        226,
-        72,
-        252,
-        9,
-        188
-      ]
-    },
-    {
-      "name": "BridgeVerifiedUrl",
-      "discriminator": [
-        117,
-        189,
-        84,
-        22,
-        19,
-        71,
-        27,
-        79
-      ]
-    },
-    {
-      "name": "IncomingBridgeDelivered",
-      "discriminator": [
-        233,
-        50,
-        253,
-        22,
-        75,
-        145,
-        34,
-        86
-      ]
-    },
-    {
-      "name": "SolverBondRefunded",
-      "discriminator": [
-        131,
-        99,
-        129,
-        7,
-        243,
-        196,
-        133,
-        22
-      ]
-    }
-  ],
-  "errors": [
-    {
-      "code": 6000,
-      "name": "AbortedComputation",
-      "msg": "The computation was aborted"
-    },
-    {
-      "code": 6001,
-      "name": "ClusterNotSet",
-      "msg": "Cluster not set"
-    },
-    {
-      "code": 6002,
-      "name": "InvalidMint",
-      "msg": "Invalid token mint"
-    },
-    {
-      "code": 6003,
-      "name": "InvalidOwner",
-      "msg": "Invalid token owner"
-    },
-    {
-      "code": 6004,
-      "name": "OnlyOwner",
-      "msg": "Only owner can modify config"
-    },
-    {
-      "code": 6005,
-      "name": "RequestAlreadyFinalized",
-      "msg": "Request already finalized"
-    },
-    {
-      "code": 6006,
-      "name": "ActiveClaimNotExpired",
-      "msg": "Request currently has an active claim that is not expired yet"
-    },
-    {
-      "code": 6007,
-      "name": "ZeroBondNotAllowed",
-      "msg": "Bond must be greater than zero"
-    },
-    {
-      "code": 6008,
-      "name": "BondTooLow",
-      "msg": "Bond is too low"
-    },
-    {
-      "code": 6009,
-      "name": "ActiveClaim",
-      "msg": "Active claim already exists"
-    },
-    {
-      "code": 6010,
-      "name": "NoClaim",
-      "msg": "No claim exists"
-    },
-    {
-      "code": 6011,
-      "name": "ClaimExpired",
-      "msg": "Claim has expired"
-    },
-    {
-      "code": 6012,
-      "name": "MathOverflow",
-      "msg": "Math overflow"
-    },
-    {
-      "code": 6013,
-      "name": "AlreadyFinalized",
-      "msg": "Already finalized"
-    },
-    {
-      "code": 6014,
-      "name": "ClaimWindowOutOfRange",
-      "msg": "Claim window out of range"
-    },
-    {
-      "code": 6015,
-      "name": "InsufficientEscrowBalance",
-      "msg": "Insufficient escrow balance"
-    }
-  ],
+  "metadata": {
+    "description": "Created with Arcium & Anchor",
+    "name": "contracts",
+    "spec": "0.1.0",
+    "version": "0.1.0"
+  },
   "types": [
     {
       "name": "Activation",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "activation_epoch",
@@ -1958,30 +1328,27 @@
               }
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "AttestationQueued",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "nonce",
             "type": {
-              "array": [
-                "u8",
-                16
-              ]
+              "array": ["u8", 16]
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BridgeClaimExpired",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "request_id",
@@ -1995,13 +1362,13 @@
             "name": "slashed",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BridgeClaimed",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "request_id",
@@ -2019,13 +1386,13 @@
             "name": "deadline",
             "type": "i64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BridgeConfig",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "owner",
@@ -2059,13 +1426,13 @@
             "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BridgeInitiated",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "request_id",
@@ -2091,13 +1458,13 @@
             "name": "ts",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BridgePaidToSolver",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "request_id",
@@ -2115,13 +1482,13 @@
             "name": "payout",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BridgeRequest",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "request_id",
@@ -2174,10 +1541,7 @@
           {
             "name": "client_pubkey",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
@@ -2187,46 +1551,34 @@
           {
             "name": "dest_ct_w0",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
             "name": "dest_ct_w1",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
             "name": "dest_ct_w2",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
             "name": "dest_ct_w3",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BridgeVerifiedUrl",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "request_id",
@@ -2239,26 +1591,21 @@
           {
             "name": "dest_tx_hash",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
             "name": "evidence_hash",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
             "name": "evidence_url",
             "type": "string"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
@@ -2267,45 +1614,42 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "Local",
             "fields": [
               {
                 "defined": {
                   "name": "LocalCircuitSource"
                 }
               }
-            ]
+            ],
+            "name": "Local"
           },
           {
-            "name": "OnChain",
             "fields": [
               {
                 "defined": {
                   "name": "OnChainCircuitSource"
                 }
               }
-            ]
+            ],
+            "name": "OnChain"
           },
           {
-            "name": "OffChain",
             "fields": [
               {
                 "defined": {
                   "name": "OffChainCircuitSource"
                 }
               }
-            ]
+            ],
+            "name": "OffChain"
           }
         ]
       }
     },
     {
+      "docs": ["An account storing the current network epoch"],
       "name": "ClockAccount",
-      "docs": [
-        "An account storing the current network epoch"
-      ],
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "start_epoch",
@@ -2335,13 +1679,13 @@
             "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "Cluster",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "authority",
@@ -2372,10 +1716,7 @@
           {
             "name": "cu_price_proposals",
             "type": {
-              "array": [
-                "u64",
-                32
-              ]
+              "array": ["u64", 32]
             }
           },
           {
@@ -2416,16 +1757,14 @@
             "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
+      "docs": ["An account representing a [ComputationDefinition] in a MXE."],
       "name": "ComputationDefinitionAccount",
-      "docs": [
-        "An account representing a [ComputationDefinition] in a MXE."
-      ],
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "finalization_authority",
@@ -2461,16 +1800,14 @@
             "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
+      "docs": ["A computation definition for execution in a MXE."],
       "name": "ComputationDefinitionMeta",
-      "docs": [
-        "A computation definition for execution in a MXE."
-      ],
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "circuit_len",
@@ -2484,27 +1821,28 @@
               }
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
-      "name": "ComputationOutputs",
       "generics": [
         {
           "kind": "type",
           "name": "O"
         }
       ],
+      "name": "ComputationOutputs",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "Success",
             "fields": [
               {
                 "generic": "O"
               }
-            ]
+            ],
+            "name": "Success"
           },
           {
             "name": "Failure"
@@ -2513,12 +1851,11 @@
       }
     },
     {
-      "name": "ComputationSignature",
       "docs": [
         "The signature of a computation defined in a [ComputationDefinition]."
       ],
+      "name": "ComputationSignature",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "parameters",
@@ -2540,37 +1877,33 @@
               }
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
+      "docs": ["The network epoch"],
       "name": "Epoch",
-      "docs": [
-        "The network epoch"
-      ],
       "type": {
-        "kind": "struct",
-        "fields": [
-          "u64"
-        ]
+        "fields": ["u64"],
+        "kind": "struct"
       }
     },
     {
       "name": "FeePool",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "IncomingBridgeDelivered",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "recipient",
@@ -2584,7 +1917,8 @@
             "name": "amount",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
@@ -2599,12 +1933,9 @@
       }
     },
     {
+      "docs": ["A MPC Execution Environment."],
       "name": "MXEAccount",
-      "docs": [
-        "A MPC Execution Environment."
-      ],
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "authority",
@@ -2648,19 +1979,19 @@
             "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
-      "name": "NodeRef",
       "docs": [
         "A reference to a node in the cluster.",
         "The offset is to derive the Node Account.",
         "The current_total_rewards is the total rewards the node has received so far in the current",
         "epoch."
       ],
+      "name": "NodeRef",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "offset",
@@ -2674,13 +2005,13 @@
             "name": "vote",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "OffChainCircuitSource",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "source",
@@ -2689,19 +2020,16 @@
           {
             "name": "hash",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "OnChainCircuitSource",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "is_completed",
@@ -2711,16 +2039,17 @@
             "name": "upload_auth",
             "type": "pubkey"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
-      "name": "Output",
       "docs": [
         "An output of a computation.",
         "We currently don't support encrypted outputs yet since encrypted values are passed via",
         "data objects."
       ],
+      "name": "Output",
       "type": {
         "kind": "enum",
         "variants": [
@@ -2755,7 +2084,6 @@
       }
     },
     {
-      "name": "Parameter",
       "docs": [
         "A parameter of a computation.",
         "We differentiate between plaintext and encrypted parameters and data objects.",
@@ -2763,6 +2091,7 @@
         "Encrypted parameters are provided as an offchain reference to the data.",
         "Data objects are provided as a reference to the data object account."
       ],
+      "name": "Parameter",
       "type": {
         "kind": "enum",
         "variants": [
@@ -2806,33 +2135,32 @@
       }
     },
     {
-      "name": "PlanPayoutOutput",
       "docs": [
         "The output of the callback instruction. Provided as a struct with ordered fields",
         "as anchor does not support tuples and tuple structs yet."
       ],
+      "name": "PlanPayoutOutput",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "field_0",
             "type": {
               "defined": {
-                "name": "SharedEncryptedStruct",
                 "generics": [
                   {
                     "kind": "const",
                     "value": "4"
                   }
-                ]
+                ],
+                "name": "SharedEncryptedStruct"
               }
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
-      "name": "SharedEncryptedStruct",
       "generics": [
         {
           "kind": "const",
@@ -2840,16 +2168,13 @@
           "type": "usize"
         }
       ],
+      "name": "SharedEncryptedStruct",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "encryption_key",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
@@ -2861,10 +2186,7 @@
             "type": {
               "array": [
                 {
-                  "array": [
-                    "u8",
-                    32
-                  ]
+                  "array": ["u8", 32]
                 },
                 {
                   "generic": "LEN"
@@ -2872,25 +2194,25 @@
               ]
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "SignerAccount",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "SolverBondRefunded",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "request_id",
@@ -2904,19 +2226,20 @@
             "name": "refunded_bond",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "Timestamp",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "timestamp",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
@@ -2925,29 +2248,23 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "Set",
             "fields": [
               {
-                "array": [
-                  "u8",
-                  32
-                ]
+                "array": ["u8", 32]
               }
-            ]
+            ],
+            "name": "Set"
           },
           {
-            "name": "Unset",
             "fields": [
               {
-                "array": [
-                  "u8",
-                  32
-                ]
+                "array": ["u8", 32]
               },
               {
                 "vec": "bool"
               }
-            ]
+            ],
+            "name": "Unset"
           }
         ]
       }
