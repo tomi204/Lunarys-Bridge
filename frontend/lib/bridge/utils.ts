@@ -25,3 +25,25 @@ export function solanaTxUrl(sig: string): string {
 }
 
 export const sepoliaTxUrl = (hash: string) => `https://sepolia.etherscan.io/tx/${hash}`;
+
+
+// lib/utils.ts
+export function toBaseUnits(human: string, decimals: number): bigint {
+  const [i, fRaw = ""] = human.trim().split(".");
+  const f = fRaw.padEnd(decimals, "0").slice(0, decimals);
+  const s = `${i || "0"}${f}`.replace(/^0+(?=\d)/, "");
+  return BigInt(s || "0");
+}
+
+// (opcional) la inversa, útil para mostrar balances
+export function fromBaseUnits(amount: bigint | string, decimals: number): string {
+  const s = BigInt(amount).toString().padStart(decimals + 1, "0");
+  const split = s.length - decimals;
+  const int = s.slice(0, split).replace(/^0+(?=\d)/, "");
+  const frac = s.slice(split).replace(/0+$/, "");
+  return frac ? `${int}.${frac}` : int;
+}
+
+
+
+
