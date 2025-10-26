@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
+    "types": ["node"],               // <---- añade esto
+    "allowJs": false,                // opcional
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -13,11 +14,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"],
       "@fhevm/react": ["../fhevm-react/index"],
