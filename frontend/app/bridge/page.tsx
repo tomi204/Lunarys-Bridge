@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowDownUp, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+
+// Project hooks & components
 import { useFromTokenMeta } from "@/hooks/useFromTokenMeta";
 import { useSplBalance } from "@/hooks/useSplBalance";
-import { toBaseUnits } from "@/lib/bridge/utils";
+import { isValidSolanaAddress, isValidEthereumAddress } from "@/lib/bridge/utils";
+import { useBridgeRoute } from "@/hooks/bridge/useBridgeRoute";
+import { useEvmBridge } from "@/hooks/bridge/useEvmBridge";
+import { useFhevmBridge } from "@/providers/fhevm-bridge-provider";
 
 import { ConstellationBackground } from "@/components/constellation-background";
 import { Footer } from "@/components/footer";
@@ -29,15 +34,44 @@ import { MatrixText } from "@/components/ui/matrix-text";
 import { InlineMatrixText } from "@/components/ui/inline-matrix-text";
 import { ConnectWalletButton } from "@/components/wallet/connect-wallet-button";
 
-// Hooks de negocio
-import { useBridgeRoute } from "@/hooks/bridge/useBridgeRoute";
-import { useEvmBridge } from "@/hooks/bridge/useEvmBridge";
-import { useSolanaInitiate } from "@/hooks/bridge/useSolanaInitiate";
-import { isValidSolanaAddress, isValidEthereumAddress } from "@/lib/bridge/utils";
-import { useFhevmBridge } from "@/providers/fhevm-bridge-provider";
+// Reown (Solana)
+import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
+import type { Provider as ReownSolanaProvider } from "@reown/appkit-adapter-solana/react";
 
-/* ---------- Logos ---------- */
+// Anchor / Solana
+import * as anchor from "@coral-xyz/anchor";
+import type { Idl, Wallet as AnchorWallet } from "@coral-xyz/anchor";
+import {
+  PublicKey,
+  SystemProgram,
+  ComputeBudgetProgram,
+  Transaction,
+  VersionedTransaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
 
+import {
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+  createAssociatedTokenAccountInstruction,
+} from "@solana/spl-token";
+
+// Arcium helpers (idénticos al script)
+import {
+  getArciumProgAddress,
+  getMXEAccAddress,
+  getMempoolAccAddress,
+  getExecutingPoolAccAddress,
+  getCompDefAccAddress,
+  getCompDefAccOffset,
+  getComputationAccAddress,
+} from "@arcium-hq/client";
+
+// IDL de tu programa
+import idl from "@/abi/bridge.json";
+
+// ---------- Logos ----------
 const EthereumLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
   <svg viewBox="0 0 256 417" xmlns="http://www.w3.org/2000/svg" className={className}>
     <path fill="#343434" d="m127.961 0-2.795 9.5v275.668l2.795 2.79 127.962-75.638z" />
@@ -67,33 +101,285 @@ const SolanaLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
     </defs>
     <path fill="url(#solGradient1)" d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1z" />
     <path fill="url(#solGradient2)" d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1z" />
-    <path fill="url(#solGradient3)" d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c-3 0 4.6-11.1z" />
+    <path fill="url(#solGradient3)" d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c-5.8 0-8.7-7-4.6-11.1z" />
   </svg>
 );
 
 const USDCLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
   <svg viewBox="0 0 2000 2000" xmlns="http://www.w3.org/2000/svg" className={className}>
     <circle cx="1000" cy="1000" r="1000" fill="#2775CA" />
-    <path
-      fill="#fff"
-      d="M1275 1158.33c0-145.83-87.5-195.83-262.5-216.66-125-16.67-150-50-150-108.34s41.67-95.83 125-95.83c75 0 116.67 25 137.5 87.5 4.17 12.5 16.67 20.83 29.17 20.83h66.66c16.67 0 29.17-12.5 29.17-29.16v-4.17c-16.67-91.67-91.67-162.5-187.5-170.83v-100c0-16.67-12.5-29.17-33.33-33.34h-62.5c-16.67 0-29.17 12.5-33.34 33.34v95.83c-125 16.67-204.16 100-204.16 204.17 0 137.5 83.33 191.66 258.33 212.5 116.67 20.83 154.17 45.83 154.17 112.5s-58.34 112.5-137.5 112.5c-108.34 0-145.84-45.84-158.34-108.34-4.16-16.66-16.66-25-29.16-25h-70.84c-16.66 0-29.16 12.5-29.16 29.17v4.17c16.66 104.16 83.33 179.16 220.83 200v100c0 16.66 12.5 29.16 33.33 33.33h62.5c16.67 0 29.17-12.5 33.34-33.33v-100c125-20.84 208.33-108.34 208.33-220.84z"
-    />
-    <path
-      fill="#fff"
-      d="M787.5 1595.83c-325-116.66-491.67-479.16-370.83-800 62.5-175 200-308.33 370.83-370.83 16.67-8.33 25-20.83 25-41.67V325c0-16.67-8.33-29.17-25-33.33-4.17 0-12.5 0-16.67 4.16-395.83 125-612.5 545.84-487.5 941.67 75 233.33 254.17 412.5 487.5 487.5 16.67 8.33 33.34 0 37.5-16.67 4.17-4.16 4.17-8.33 4.17-16.66v-58.34c0-12.5-12.5-29.16-25-37.5zM1229.17 295.83c-16.67-8.33-33.34 0-37.5 16.67-4.17 4.17-4.17 8.33-4.17 16.67v58.33c0 16.67 12.5 33.33 25 41.67 325 116.66 491.67 479.16 370.83 800-62.5 175-200 308.33-370.83 370.83-16.67 8.33-25 20.83-25 41.67V1700c0 16.67 8.33 29.17 25 33.33 4.17 0 12.5 0 16.67-4.16 395.83-125 612.5-545.84 487.5-941.67-75-237.5-258.34-416.67-487.5-491.67z"
-    />
+    <path fill="#fff" d="M1275 1158.33c0-145.83-87.5-195.83-262.5-216.66-125-16.67-150-50-150-108.34s41.67-95.83 125-95.83c75 0 116.67 25 137.5 87.5 4.17 12.5 16.67 20.83 29.17 20.83h66.66c16.67 0 29.17-12.5 29.17-29.16v-4.17c-16.67-91.67-91.67-162.5-187.5-170.83v-100c0-16.67-12.5-29.17-33.33-33.34h-62.5c-16.67 0-29.17 12.5-33.34 33.34v95.83c-125 16.67-204.16 100-204.16 204.17 0 137.5 83.33 191.66 258.33 212.5 116.67 20.83 154.17 45.83 154.17 112.5s-58.34 112.5-137.5 112.5c-108.34 0-145.84-45.84-158.34-108.34-4.16-16.66-16.66-25-29.16-25h-70.84c-16.66 0-29.16 12.5-29.16 29.17v4.17c16.66 104.16 83.33 179.16 220.83 200v100c0 16.66 12.5 29.16 33.33 33.33h62.5c16.67 0 29.17-12.5 33.34-33.33v-100c125-20.84 208.33-108.34 208.33-220.84z" />
+    <path fill="#fff" d="M787.5 1595.83c-325-116.66-491.67-479.16-370.83-800 62.5-175 200-308.33 370.83-370.83 16.67-8.33 25-20.83 25-41.67V325c0-16.67-8.33-29.17-25-33.33-4.17 0-12.5 0-16.67 4.16-395.83 125-612.5 545.84-487.5 941.67 75 233.33 254.17 412.5 487.5 487.5 16.67 8.33 33.34 0 37.5-16.67 4.17-4.16 4.17-8.33 4.17-16.66v-58.34c0-12.5-12.5-29.16-25-37.5zM1229.17 295.83c-16.67-8.33-33.34 0-37.5 16.67-4.17 4.17-4.17 8.33-4.17 16.67v58.33c0 16.67 12.5 33.33 25 41.67 325 116.66 491.67 479.16 370.83 800-62.5 175-200 308.33-370.83 370.83-16.67 8.33-25 20.83-25 41.67V1700c0 16.67 8.33 29.17 25 33.33 4.17 0 12.5 0 16.67-4.16 395.83-125 612.5-545.84 487.5-941.67-75-237.5-258.34-416.67-487.5-491.67z" />
   </svg>
 );
 
+// === ENV base (idéntico al script) ===
+const SOLANA_RPC_URL = (process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com").replace(/"/g, "");
+const SPL_MINT_ENV = new PublicKey(process.env.NEXT_PUBLIC_SPL_MINT!.replace(/"/g, ""));
+const SIGN_SEED = (process.env.NEXT_PUBLIC_SIGN_SEED || "SignerAccount").replace(/"/g, "").trim();
 
-/* ---------- Constantes UI ---------- */
+const ARCIUM_CLUSTER = new PublicKey(process.env.NEXT_PUBLIC_ARCIUM_CLUSTER!.replace(/"/g, ""));
+const ARCIUM_FEE_POOL = new PublicKey(process.env.NEXT_PUBLIC_ARCIUM_POOL!.replace(/"/g, ""));
+const ARCIUM_CLOCK = new PublicKey(process.env.NEXT_PUBLIC_ARCIUM_CLOCK!.replace(/"/g, ""));
 
+// === utils (browser-safe) ===
+function u64leBytes(v: bigint): Uint8Array {
+  const ab = new ArrayBuffer(8);
+  new DataView(ab).setBigUint64(0, v, true);
+  return new Uint8Array(ab);
+}
+function randU64(): bigint {
+  const a = new Uint32Array(2);
+  crypto.getRandomValues(a);
+  return (BigInt(a[0]) << 32n) | BigInt(a[1]);
+}
+function toU64FromHuman(humanAmount: string, decimals: number): bigint {
+  const clean = humanAmount.trim();
+  if (!/^\d+(\.\d+)?$/.test(clean)) throw new Error("Monto inválido");
+  const [intPart, fracRaw = ""] = clean.split(".");
+  const frac = (fracRaw + "0".repeat(decimals)).slice(0, decimals);
+  const base = BigInt(10) ** BigInt(decimals);
+  return BigInt(intPart || "0") * base + BigInt(frac || "0");
+}
+function hexToBytes32FromEth(addr: string): Uint8Array {
+  const h = addr.trim().toLowerCase().replace(/^0x/, "");
+  if (!/^[0-9a-f]{40}$/.test(h)) throw new Error("Dirección EVM inválida (0x + 40 hex)");
+  const raw = new Uint8Array(20);
+  for (let i = 0; i < 20; i++) raw[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+  const out = new Uint8Array(32);
+  out.set(raw, 12);
+  return out;
+}
+async function sha256Tag(label: string, base: Uint8Array): Promise<Uint8Array> {
+  const enc = new TextEncoder().encode(label);
+  const data = new Uint8Array(enc.length + base.length);
+  data.set(enc, 0);
+  data.set(base, enc.length);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(digest);
+}
+async function makeDummyCtsFromEth(ethRecipient: string) {
+  const base = hexToBytes32FromEth(ethRecipient);
+  return {
+    ct0: await sha256Tag("ct0:", base),
+    ct1: await sha256Tag("ct1:", base),
+    ct2: await sha256Tag("ct2:", base),
+    ct3: await sha256Tag("ct3:", base),
+  };
+}
+
+// Anchor wallet wrapper para Reown
+type AnchorBrowserWallet = {
+  publicKey: PublicKey;
+  signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T>;
+  signAllTransactions<T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]>;
+  signMessage?(message: Uint8Array): Promise<Uint8Array>;
+};
+function makeReownAnchorWallet(address: string, provider: ReownSolanaProvider): AnchorBrowserWallet {
+  const pubkey = new PublicKey(address);
+  return {
+    publicKey: pubkey,
+    async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
+      const p: any = provider;
+      if (typeof p?.signTransaction === "function") {
+        const signed = await p.signTransaction(tx as any);
+        return signed as T;
+      }
+      return tx;
+    },
+    async signAllTransactions<T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]> {
+      const p: any = provider;
+      if (typeof p?.signAllTransactions === "function") {
+        const signed = await p.signAllTransactions(txs as any);
+        return signed as T[];
+      }
+      return txs;
+    },
+    async signMessage(message: Uint8Array): Promise<Uint8Array> {
+      const p: any = provider;
+      if (typeof p?.signMessage === "function") {
+        const res = await p.signMessage(message);
+        return (res?.signature ?? res) as Uint8Array;
+      }
+      throw new Error("signMessage no soportado por este wallet");
+    },
+  };
+}
+
+// ================== Hook: useSolanaInitiateReown (1:1 con el script) ==================
+function useSolanaInitiateReown() {
+  const connection = useMemo(() => new anchor.web3.Connection(SOLANA_RPC_URL, "confirmed"), []);
+  const { walletProvider } = useAppKitProvider<ReownSolanaProvider>("solana");
+  const { isConnected, address } = useAppKitAccount();
+
+  const [phase, setPhase] = useState<"idle" | "locking" | "encrypting" | "burning" | "bridging">("idle");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSig, setLastSig] = useState<string | null>(null);
+  const [lastRequestPda, setLastRequestPda] = useState<string | null>(null);
+
+  const ensureAtaIx = useCallback(
+    async (owner: PublicKey, mint: PublicKey, isPdaOwner = false, feePayer?: PublicKey) => {
+      const ata = getAssociatedTokenAddressSync(mint, owner, isPdaOwner);
+      const acc = await connection.getAccountInfo(ata);
+      if (acc) return { ata, ix: null as TransactionInstruction | null };
+      const payer = feePayer ?? owner;
+      const ix = createAssociatedTokenAccountInstruction(
+        payer,
+        ata,
+        owner,
+        mint,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      return { ata, ix };
+    },
+    [connection]
+  );
+
+  const initiate = useCallback(
+    async (args: {
+      ethRecipient: string;
+      humanAmount: string;
+      decimals: number;
+      splMint: string;
+      skipSim?: boolean;
+    }) => {
+      setError(null);
+      setLastSig(null);
+      setLastRequestPda(null);
+
+      if (!isConnected || !walletProvider || !address) {
+        throw new Error("Solana wallet no conectada");
+      }
+
+      setLoading(true);
+      setPhase("locking");
+
+      try {
+        const payer = new PublicKey(address);
+        const walletLike = makeReownAnchorWallet(address, walletProvider);
+        const anchorProvider = new anchor.AnchorProvider(
+          connection,
+          walletLike as unknown as AnchorWallet,
+          { commitment: "confirmed" }
+        );
+        anchor.setProvider(anchorProvider);
+
+        const PROGRAM_ID = new PublicKey((((idl as any).address ?? process.env.NEXT_PUBLIC_SOLANA_PROGRAM_ID) as string).replace(/"/g, ""));
+        const program = new anchor.Program(idl as Idl, anchorProvider);
+
+        const [CONFIG_PDA] = PublicKey.findProgramAddressSync([Buffer.from("config")], PROGRAM_ID);
+        const [SIGN_PDA] = PublicKey.findProgramAddressSync([Buffer.from(SIGN_SEED)], PROGRAM_ID);
+
+        const requestId = BigInt(Date.now() % 2 ** 32);
+        const [REQUEST_PDA] = PublicKey.findProgramAddressSync(
+          [Buffer.from("request"), payer.toBuffer(), u64leBytes(requestId)],
+          PROGRAM_ID
+        );
+
+        const MINT = new PublicKey(args.splMint || SPL_MINT_ENV.toBase58());
+
+        const { ata: userToken, ix: ixUser } = await ensureAtaIx(payer, MINT, false);
+        const { ata: escrowToken, ix: ixEsc } = await ensureAtaIx(SIGN_PDA, MINT, true, payer);
+
+        const ARCIUM_PROGRAM_ID = getArciumProgAddress();
+        const MXE = getMXEAccAddress(PROGRAM_ID);
+        const MEMPOOL = getMempoolAccAddress(PROGRAM_ID);
+        const EXECPOOL = getExecutingPoolAccAddress(PROGRAM_ID);
+
+        const planOffsetRaw = getCompDefAccOffset("plan_payout");
+        const planOffsetU32 =
+          typeof planOffsetRaw === "number"
+            ? planOffsetRaw
+            : new DataView((planOffsetRaw as Uint8Array).buffer, (planOffsetRaw as Uint8Array).byteOffset, 4).getUint32(0, true);
+        const COMPDEF_PLAN = getCompDefAccAddress(PROGRAM_ID, planOffsetU32);
+
+        const offset = randU64();
+        const COMPUTATION_ACCOUNT = getComputationAccAddress(PROGRAM_ID, new anchor.BN(offset.toString()));
+
+        const clientPub = crypto.getRandomValues(new Uint8Array(32));
+        const nonce = crypto.getRandomValues(new Uint8Array(16));
+        const { ct0, ct1, ct2, ct3 } = await makeDummyCtsFromEth(args.ethRecipient);
+        const amountU64 = toU64FromHuman(args.humanAmount, args.decimals);
+
+        const preIxs: TransactionInstruction[] = [
+          ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),
+          ...(ixUser ? [ixUser] : []),
+          ...(ixEsc ? [ixEsc] : []),
+        ];
+
+        setPhase("encrypting");
+
+        const builder = (program.methods as any)
+          .initiateBridge(
+            new anchor.BN(offset.toString()),
+            new anchor.BN(requestId.toString()),
+            Uint8Array.from(clientPub),
+            Uint8Array.from(nonce),
+            Uint8Array.from(ct0),
+            Uint8Array.from(ct1),
+            Uint8Array.from(ct2),
+            Uint8Array.from(ct3),
+            new anchor.BN(amountU64.toString())
+          )
+          .accountsStrict({
+            payer,
+            userToken,
+            mint: MINT,
+            escrowToken,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            config: CONFIG_PDA,
+            requestPda: REQUEST_PDA,
+            signPdaAccount: SIGN_PDA,
+            mxeAccount: MXE,
+            mempoolAccount: MEMPOOL,
+            executingPool: EXECPOOL,
+            computationAccount: COMPUTATION_ACCOUNT,
+            compDefAccount: COMPDEF_PLAN,
+            clusterAccount: ARCIUM_CLUSTER,
+            poolAccount: ARCIUM_FEE_POOL,
+            clockAccount: ARCIUM_CLOCK,
+            systemProgram: SystemProgram.programId,
+            arciumProgram: ARCIUM_PROGRAM_ID,
+          })
+          .preInstructions(preIxs);
+
+        if (!args.skipSim) {
+          try {
+            await builder.simulate();
+          } catch (e: any) {
+            const logs: string[] = e?.simulationResponse?.logs ?? e?.logs ?? [];
+            throw new Error((e?.message ?? "simulate failed") + (logs.length ? `\n\n${logs.join("\n")}` : ""));
+          }
+        }
+
+        const sig: string = await builder.rpc();
+        setPhase("bridging");
+        setLastSig(sig);
+        setLastRequestPda(REQUEST_PDA.toBase58());
+        return { sig, requestPda: REQUEST_PDA.toBase58() };
+      } catch (e: any) {
+        console.error(e);
+        const logs = (e?.logs && Array.isArray(e.logs)) ? e.logs.join("\n") : undefined;
+        const msg = logs ? `${e.message}\n\n${logs}` : (e?.message ?? String(e));
+        setError(msg);
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isConnected, walletProvider, address, connection, ensureAtaIx]
+  );
+
+  return { initiate, phase, loading, error, lastSig, lastRequestPda };
+}
+
+// ================== UI ==================
 const chainOptions = [
   { value: "solana-devnet", label: "Solana Devnet", tagline: "Finality < 1s" },
   { value: "sepolia", label: "Sepolia", tagline: "Ethereum testnet" },
 ];
-
-const tokenOptions = [{ value: "USDC", label: "USDC", subtitle: "USD Coin (Sepolia)" }];
 
 const quickStats = [
   { label: "Privacy score", value: "99.1%" },
@@ -101,22 +387,16 @@ const quickStats = [
   { label: "Route", value: "Tier 1" },
 ];
 
-// ✅ Obligatorio para Solana → Ethereum (init guarda la dirección EVM on-chain)
-const REQUIRE_ETH_DEST_ON_INIT = true;
-
 export default function BridgePage() {
-  // Ruta
   const { fromChain, toChain, setFromChain, setToChain, swap, isSolToEvm, isEvmToSol } = useBridgeRoute();
 
-  // Estado UI
   const [amount, setAmount] = useState("10.00");
   const [selectedToken, setSelectedToken] = useState("USDC");
 
-  // Destinos
-  const [destinationAddress, setDestinationAddress] = useState(""); // Solana (EVM→Sol)
+  const [destinationAddress, setDestinationAddress] = useState("");
   const [destinationAddressError, setDestinationAddressError] = useState<string | null>(null);
 
-  const [ethereumDestination, setEthereumDestination] = useState(""); // Ethereum (Sol→EVM)
+  const [ethereumDestination, setEthereumDestination] = useState("");
   const [ethereumDestinationError, setEthereumDestinationError] = useState<string | null>(null);
 
   const ethereumDestinationValid = useMemo(
@@ -124,7 +404,6 @@ export default function BridgePage() {
     [ethereumDestination]
   );
 
-  // Hooks negocio
   const {
     bridge,
     phase: evmPhase,
@@ -139,25 +418,12 @@ export default function BridgePage() {
   const solMint = fromToken?.kind === "solana" ? fromToken.mint : undefined;
   const { uiAmountString: splUiBalance } = useSplBalance(solMint);
 
-    // Balance a mostrar según la ruta
-  const displayBalance = isSolToEvm
-  ? (splUiBalance ?? "—")  // cuando es Sol → EVM, mostramos balance SPL
-  : (balance ?? "—");      // cuando es EVM → Sol, mostramos balance EVM
-  
-  // Solana INIT (guarda address EVM en on-chain)
-  const {
-    initiate,
-    phase: solPhase,
-    loading: solLoading,
-    error: solErr,
-    lastSig: lastInitSig,
-    lastRequestPda,
-  } = useSolanaInitiate();
+  const displayBalance = isSolToEvm ? (splUiBalance ?? "—") : (balance ?? "—");
 
-  // (Opcional) Debug FHE/chain en UI
+  const { initiate, phase: solPhase, loading: solLoading, error: solErr, lastSig: lastInitSig, lastRequestPda } = useSolanaInitiateReown();
+
   const { isConnected, isCorrectNetwork, fheStatus } = useFhevmBridge();
 
-  // Wallet Solana presente (UX)
   const [hasSolWallet, setHasSolWallet] = useState(false);
   useEffect(() => {
     const anyWin = window as any;
@@ -166,11 +432,9 @@ export default function BridgePage() {
     setHasSolWallet(phantom || reown);
   }, []);
 
-  // Fase/Loading combinados
   const phase = isSolToEvm ? solPhase : evmPhase;
   const isLoading = isSolToEvm ? solLoading : evmLoading;
 
-  // Mates rápidos
   const numericAmount = useMemo(() => {
     const parsed = Number.parseFloat(amount);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
@@ -197,43 +461,23 @@ export default function BridgePage() {
       : value.toLocaleString("en-US", { maximumFractionDigits: 3, minimumFractionDigits: 3 });
   }, [numericAmount]);
 
-  // Mensajes de ayuda
   const helperMessage = useMemo(() => {
     if (isSolToEvm) {
       if (!hasSolWallet) return "Connect your Solana wallet (Phantom/AppKit) to initiate.";
-      if (REQUIRE_ETH_DEST_ON_INIT && ethereumDestination.trim().length === 0)
-        return "Enter the Ethereum destination address (required on initiate).";
-      if (REQUIRE_ETH_DEST_ON_INIT && !isValidEthereumAddress(ethereumDestination))
-        return "Enter a valid Ethereum address (0x...).";
+      if (ethereumDestination.trim().length === 0) return "Enter the Ethereum destination address (required on initiate).";
+      if (!isValidEthereumAddress(ethereumDestination)) return "Enter a valid Ethereum address (0x...).";
       return "The Ethereum address will be embedded on-chain (4×u64) during initiate.";
     }
-    // EVM → Sol
     if (destinationAddress.trim().length === 0) return "Enter the Solana destination address.";
     if (!isValidSolanaAddress(destinationAddress)) return "Enter a valid Solana address.";
     if (numericAmount <= 0) return "Enter an amount greater than zero.";
     if (!tokenConfig && isEvmToSol) return "Pick a supported token for this route.";
     return null;
-  }, [
-    isSolToEvm,
-    hasSolWallet,
-    ethereumDestination,
-    destinationAddress,
-    numericAmount,
-    tokenConfig,
-    isEvmToSol,
-  ]);
+  }, [isSolToEvm, hasSolWallet, ethereumDestination, destinationAddress, numericAmount, tokenConfig, isEvmToSol]);
 
-  // Disable del botón
-  const isBridgeDisabled =
-    isLoading ||
-    (isSolToEvm
-      ? !hasSolWallet || (REQUIRE_ETH_DEST_ON_INIT && !ethereumDestinationValid)
-      : !canBridge);
-
-  // Acción principal (INIT en Sol→EVM, BRIDGE en EVM→Sol)
-  const onAction = async () => {
+  const onAction = useCallback(async () => {
     if (isSolToEvm) {
-      if (REQUIRE_ETH_DEST_ON_INIT && !ethereumDestinationValid) {
+      if (!ethereumDestinationValid) {
         toast.error("Enter a valid Ethereum address (0x...).");
         return;
       }
@@ -245,46 +489,37 @@ export default function BridgePage() {
         toast.error("Enter an amount greater than zero.");
         return;
       }
-  
-      const ethRecipient = ethereumDestination.trim();
-  
-      // 👇 NO enviar amountLocked. Pasar monto humano + decimales + mint SPL
-      const res = await initiate({
-        requestId: 0n,
-        ethRecipient,
-        humanAmount: amount,
-        decimals: fromToken.decimals,
-        splMint: fromToken.mint,
-        skipSim: true,              // 👈 FORZAR envío (sin simulate)
-      });
-  
-      if (res.sig) {
-        toast.info("Initiate submitted", {
-          description: `Request: ${res.requestPda.slice(0, 8)}…`,
-          action: {
-            label: "Open",
-            onClick: () =>
-              window.open(
-                `https://explorer.solana.com/tx/${res.sig}?cluster=devnet`,
-                "_blank",
-                "noopener,noreferrer"
-              ),
-          },
+
+      try {
+        const res = await initiate({
+          ethRecipient: ethereumDestination.trim(),
+          humanAmount: amount,
+          decimals: fromToken.decimals,
+          splMint: fromToken.mint,
+          skipSim: false, // simulate igual que el script
         });
+        if (res?.sig) {
+          toast.info("Initiate submitted", {
+            description: `Request: ${res.requestPda.slice(0, 8)}…`,
+            action: {
+              label: "Open",
+              onClick: () =>
+                window.open(`https://explorer.solana.com/tx/${res.sig}?cluster=devnet`, "_blank", "noopener,noreferrer"),
+            },
+          });
+        }
+      } catch (err: any) {
+        toast.error("Initiate failed", { description: err?.message ?? String(err) });
       }
       return;
     }
-  
-    // EVM → Sol
-    return bridge();
-  };
 
-  // Middle swap
+    return bridge();
+  }, [isSolToEvm, initiate, ethereumDestinationValid, fromToken, amount, ethereumDestination, bridge]);
+
   const handleSwapChains = () => {
     if (fromChain !== toChain) swap();
   };
-
-  // Max button
   const handleMaxClick = () => {
     if (balance) setAmount(balance);
   };
@@ -294,16 +529,9 @@ export default function BridgePage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white">
-      {/* Overlays por fase */}
       {phase === "locking" && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617]">
-          <MatrixText
-            text="Initiating on Solana"
-            className="min-h-0"
-            initialDelay={0}
-            letterAnimationDuration={300}
-            letterInterval={80}
-          />
+          <MatrixText text="Initiating on Solana" className="min-h-0" initialDelay={0} letterAnimationDuration={300} letterInterval={80} />
         </div>
       )}
       {phase === "encrypting" && (
@@ -317,12 +545,12 @@ export default function BridgePage() {
       {phase === "bridging" && (
         <ChainInfo fromChain={fromChain} toChain={toChain} tokenSymbol={selectedToken} amount={amount} />
       )}
-  
+
       <ConstellationBackground className="z-0" particleCount={220} maxLineDistance={200} />
       <div className="absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(56,226,255,0.25),transparent_60%)]" />
       <div className="absolute bottom-[-20%] left-[15%] h-[420px] w-[420px] rounded-full bg-violet-500/25 blur-[140px]" />
       <div className="absolute top-[30%] right-[-5%] h-[460px] w-[460px] rounded-full bg-cyan-500/25 blur-[140px]" />
-  
+
       <header className="relative z-20">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-8">
           <Link href="/" className="flex items-center gap-3">
@@ -341,7 +569,7 @@ export default function BridgePage() {
           </div>
         </div>
       </header>
-  
+
       <main className="relative z-10 px-6 pb-24">
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-10 pt-12 text-center">
           <div className="flex flex-col items-center gap-3">
@@ -352,17 +580,16 @@ export default function BridgePage() {
               <InlineMatrixText text="Launch a private bridge" initialDelay={500} letterAnimationDuration={400} letterInterval={60} />
             </h1>
           </div>
-  
+
           <Card className="w-full border-white/10 bg-white/5 shadow-[0_45px_140px_-80px_rgba(56,226,255,0.8)]">
             <CardContent className="space-y-8 p-6">
-              <div className="grid gap-6 lg:grid-cols-[1fr_auto_1fr] lg:items-start">
-                {/* Left panel - From */}
+              <div className="grid gap-6 lg:grid-cols:[1fr_auto_1fr] lg:items-start">
                 <div className="space-y-6 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs uppercase tracking-widest text-gray-400">From</Label>
                     {fromDetails ? <span className="text-xs text-gray-500">{fromDetails.tagline}</span> : null}
                   </div>
-  
+
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={fromChain} onValueChange={setFromChain}>
                       <SelectTrigger className="w-[220px] border-white/10 bg-white/10 px-5 py-4 text-base font-semibold text-white">
@@ -382,7 +609,7 @@ export default function BridgePage() {
                         ))}
                       </SelectContent>
                     </Select>
-  
+
                     <Select value={selectedToken} onValueChange={setSelectedToken}>
                       <SelectTrigger className="w-[180px] border-white/10 bg-white/10 px-2 py-4 text-base font-semibold text-white">
                         <div className="flex items-center gap-3">
@@ -391,22 +618,18 @@ export default function BridgePage() {
                         </div>
                       </SelectTrigger>
                       <SelectContent className="bg-[#030712] p-3 text-white border-white/10">
-                        {/* Por ahora 1 token: USDC. La "subtitle" viene de fromToken.label */}
                         <SelectItem value="USDC" className="py-4 px-3">
                           <div className="flex items-center">
                             <div className="flex flex-col gap-1">
                               <span className="text-sm font-medium">USDC</span>
-                              <span className="text-xs text-gray-400">
-                                {fromToken?.label ?? "USD Coin"}
-                              </span>
+                              <span className="text-xs text-gray-400">{fromToken?.label ?? "USD Coin"}</span>
                             </div>
                           </div>
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-  
-                  {/* Amount */}
+
                   <div className="space-y-2">
                     <Input
                       type="number"
@@ -418,7 +641,7 @@ export default function BridgePage() {
                       placeholder="0.00"
                     />
                   </div>
-  
+
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex flex-col gap-1.5">
                       <span className="text-xs text-gray-500 uppercase tracking-wider">Balance</span>
@@ -441,8 +664,7 @@ export default function BridgePage() {
                     </Button>
                   </div>
                 </div>
-  
-                {/* Middle swap button */}
+
                 <div className="flex items-center justify-center">
                   <Button
                     onClick={handleSwapChains}
@@ -454,14 +676,13 @@ export default function BridgePage() {
                     <ArrowDownUp className="h-6 w-6" />
                   </Button>
                 </div>
-  
-                {/* Right panel - To */}
+
                 <div className="space-y-6 rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs uppercase tracking-widest text-gray-400">To</Label>
                     {toDetails ? <span className="text-xs text-gray-500">{toDetails.tagline}</span> : null}
                   </div>
-  
+
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={toChain} onValueChange={setToChain}>
                       <SelectTrigger className="w-[220px] border-white/10 bg-white/10 px-5 py-4 text-base font-semibold text-white">
@@ -481,14 +702,13 @@ export default function BridgePage() {
                         ))}
                       </SelectContent>
                     </Select>
-  
+
                     <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-5 py-3.5 text-sm font-medium text-gray-300">
                       <USDCLogo className="w-5 h-5 shrink-0" />
                       <span>Receive · {selectedToken}</span>
                     </div>
                   </div>
-  
-                  {/* Fees summary */}
+
                   <div className="space-y-4 rounded-xl border border-white/10 bg-white/5 p-6">
                     <div className="flex items-center justify-between pb-4 border-b border-white/10">
                       <span className="text-sm font-medium text-gray-300">You receive</span>
@@ -497,7 +717,7 @@ export default function BridgePage() {
                         <span className="text-xl font-semibold text-white">{estimatedReceive} {selectedToken}</span>
                       </div>
                     </div>
-  
+
                     <div className="space-y-3.5 text-sm">
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400">Protocol fee (0.25%)</span>
@@ -515,8 +735,7 @@ export default function BridgePage() {
                       </div>
                     </div>
                   </div>
-  
-                  {/* Destination inputs */}
+
                   {isEvmToSol && (
                     <div className="space-y-3">
                       <Label className="text-xs uppercase tracking-widest text-gray-400">Solana destination address</Label>
@@ -545,7 +764,7 @@ export default function BridgePage() {
                       )}
                     </div>
                   )}
-  
+
                   {isSolToEvm && (
                     <div className="space-y-3">
                       <Label className="text-xs uppercase tracking-widest text-gray-400">Ethereum destination address</Label>
@@ -574,8 +793,7 @@ export default function BridgePage() {
                       )}
                     </div>
                   )}
-  
-                  {/* Inline debug (sólo útil en EVM→Sol) */}
+
                   {isEvmToSol && (
                     <div className="mt-2">
                       <div className="text-xs text-gray-500 grid grid-cols-2 gap-1">
@@ -596,12 +814,14 @@ export default function BridgePage() {
                   )}
                 </div>
               </div>
-  
-              {/* Action */}
+
               <div className="space-y-4 pt-4">
                 <Button
                   onClick={onAction}
-                  disabled={isBridgeDisabled}
+                  disabled={
+                    isLoading ||
+                    (isSolToEvm ? !hasSolWallet || !ethereumDestinationValid : !canBridge)
+                  }
                   className="w-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-6 text-lg font-semibold text-black shadow-[0_0_40px_rgba(56,226,255,0.35)] transition-all hover:shadow-[0_0_60px_rgba(56,226,255,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
@@ -621,22 +841,19 @@ export default function BridgePage() {
                   )}
                   {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
                 </Button>
-  
-                {/* Mensajes informativos */}
+
                 {helperMessage && (
                   <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
                     <p className="text-sm leading-relaxed text-blue-300">{helperMessage}</p>
                   </div>
                 )}
-  
-                {/* Errores de los hooks */}
+
                 {(solErr || evmErr) && (
                   <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
-                    <p className="text-sm leading-relaxed text-red-400">{solErr || evmErr}</p>
+                    <p className="text-sm leading-relaxed text-red-400 whitespace-pre-wrap">{solErr || evmErr}</p>
                   </div>
                 )}
-  
-                {/* Feedback simple para Sol→EVM (init) */}
+
                 {(lastInitSig || lastRequestPda) && (
                   <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
                     <p className="text-sm leading-relaxed text-emerald-300">
@@ -647,7 +864,7 @@ export default function BridgePage() {
               </div>
             </CardContent>
           </Card>
-  
+
           <div className="grid w-full gap-4 text-sm text-gray-400 sm:grid-cols-3">
             {quickStats.map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-center backdrop-blur">
@@ -658,7 +875,7 @@ export default function BridgePage() {
           </div>
         </div>
       </main>
-  
+
       <Footer />
     </div>
   );

@@ -40,7 +40,7 @@ const localhostEvmNetwork = {
   },
 };
 
-const solanaNetworks = [solana, solanaDevnet, solanaTestnet];
+const solanaNetworks = [solanaDevnet];
 
 createAppKit({
   adapters: [new EthersAdapter(), new SolanaAdapter()],

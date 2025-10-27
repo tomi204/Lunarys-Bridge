@@ -1,17 +1,10 @@
-<<<<<<< HEAD
-=======
 /* eslint-disable @typescript-eslint/ban-ts-comment */
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
 'use client'
 
 import { useMemo, useEffect } from 'react'
 import { Canvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { shaderMaterial, useTrailTexture } from '@react-three/drei'
-<<<<<<< HEAD
-import { useTheme } from 'next-themes' // lub twój provider
-=======
 import { useTheme } from 'next-themes'
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
 import * as THREE from 'three'
 
 const DotMaterial = shaderMaterial(
@@ -170,16 +163,11 @@ function Scene() {
   const scale = Math.max(viewport.width, viewport.height) / 2
 
   return (
-<<<<<<< HEAD
-    <mesh scale={[scale, scale, 1]} onPointerMove={handlePointerMove}>
-      <planeGeometry args={[2, 2]} />
-=======
     // @ts-ignore - React Three Fiber JSX elements
     <mesh scale={[scale, scale, 1]} onPointerMove={handlePointerMove}>
       {/* @ts-ignore */}
       <planeGeometry args={[2, 2]} />
       {/* @ts-ignore */}
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
       <primitive
         object={dotMaterial}
         resolution={[size.width * viewport.dpr, size.height * viewport.dpr]}
@@ -188,10 +176,7 @@ function Scene() {
         mouseTrail={trail}
         render={0}
       />
-<<<<<<< HEAD
-=======
       {/* @ts-ignore */}
->>>>>>> a8819ff626f422eaae904706dfe5fe3b497b9bfb
     </mesh>
   )
 }
