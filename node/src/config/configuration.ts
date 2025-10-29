@@ -8,18 +8,20 @@ const num = (s: string | undefined, d: number) => {
 export default (): NodeConfig => {
   const cfg: NodeConfig = {
     // Ethereum
-    ethereumRpcUrl: process.env.ETHEREUM_RPC_URL ?? 'https://sepolia.infura.io/v3/1be9bb70966b486c8e4f6589492294b7',
-    ethereumPrivateKey: process.env.ETHEREUM_PRIVATE_KEY ?? '',
-    fhevmChainId: num(process.env.FHEVM_CHAIN_ID, 11155111),  
+    ethereumRpcUrl: process.env.ETHEREUM_RPC_URL ?? '',
+    // Normalizamos a 0x… si faltara
+    ethereumPrivateKey: (process.env.ETHEREUM_PRIVATE_KEY ?? '').startsWith('0x')
+      ? (process.env.ETHEREUM_PRIVATE_KEY as string)
+      : `0x${process.env.ETHEREUM_PRIVATE_KEY ?? ''}`,
+    fhevmChainId: num(process.env.FHEVM_CHAIN_ID, 11155111),
     newRelayerAddress: process.env.NEW_RELAYER_ADDRESS,
 
     // Solana
-    solanaRpcUrl: process.env.SOLANA_RPC_URL ?? 'https://api.devnet.solana.com',
+    solanaRpcUrl: process.env.SOLANA_RPC_URL ?? '',
     solanaPrivateKey: process.env.SOLANA_PRIVATE_KEY ?? '',
     solanaProgramId: process.env.SOLANA_PROGRAM_ID ?? '',
     solanaMinSolverBondLamports: num(process.env.SOLANA_MIN_SOLVER_BOND_LAMPORTS, 1_000_000),
-    // OPTIONAL for Variant A; unused for Variant B (we take owner from the event):
-    solanaRequestOwner: process.env.SOLANA_REQUEST_OWNER ?? '',
+    solanaSignSeed: process.env.SOLANA_SIGN_SEED ?? 'SignerAccount',
 
     // Node
     bondAmount: process.env.BOND_AMOUNT ?? '0.03',
@@ -27,15 +29,13 @@ export default (): NodeConfig => {
 
     // FHE (EVM side)
     fhevmGatewayUrl: process.env.FHEVM_GATEWAY_URL ?? 'https://gateway.sepolia.zama.ai',
-    fhevmAclAddress:
-      process.env.FHEVM_ACL_ADDRESS ?? '0x339EcE85B9E11a3A3AA557582784a15d7F82AAf2',
-    fhevmKmsVerifierAddress:
-      process.env.FHEVM_KMS_VERIFIER_ADDRESS ?? '0x9D6891A6240D6130c54ae243d8005063D05fE14b',
+    fhevmAclAddress: process.env.FHEVM_ACL_ADDRESS ?? '',
+    fhevmKmsVerifierAddress: process.env.FHEVM_KMS_VERIFIER_ADDRESS ?? '',
 
     // External relayer
     relayerApiUrl: process.env.RELAYER_API_URL ?? '',
 
-    // Tests/fallbacks
+    // Tests
     testSolanaDestination: process.env.TEST_SOLANA_DESTINATION ?? '',
     testEvmDestination: process.env.TEST_EVM_DESTINATION ?? '',
 
@@ -45,31 +45,37 @@ export default (): NodeConfig => {
     tokenDecimalsEvm: num(process.env.TOKEN_DECIMALS_EVM, 6),
     tokenDecimalsSol: num(process.env.TOKEN_DECIMALS_SOL, 6),
 
-    // Arcium (what you’re actually using)
+    // Arcium (program + compdefs + fixed PDAs)
     arciumProgramId: process.env.ARCIUM_PROGRAM_ID ?? '',
     arciumMxeProgramId: process.env.ARCIUM_MXE_PROGRAM_ID ?? '',
     arciumCompDefResealPda: process.env.ARCIUM_COMPDEF_RESEAL_PDA ?? '',
     arciumCompDefPlanPayoutPda: process.env.ARCIUM_COMPDEF_PLAN_PAYOUT_PDA ?? '',
+
+    // PDAs fijos de cluster
+    arciumClusterPda: process.env.ARCIUM_CLUSTER_PDA ?? '',
+    arciumFeePool: process.env.ARCIUM_FEE_POOL ?? '',
+    arciumClock: process.env.ARCIUM_CLOCK ?? '',
+
+    // Reseal MXE x25519 pub
     arciumMxeX25519PublicKey: process.env.ARCIUM_MXE_X25519_PUBLIC_KEY ?? '',
 
     // Solver key
     solverX25519Secret: process.env.SOLVER_X25519_SECRET ?? '',
   };
 
-  // Minimal required
-  if (!cfg.ethereumPrivateKey) throw new Error('ETHEREUM_PRIVATE_KEY is required');
+  // Requeridos mínimos
+  if (!cfg.ethereumPrivateKey || cfg.ethereumPrivateKey.length < 10) throw new Error('ETHEREUM_PRIVATE_KEY is required');
   if (!cfg.solanaPrivateKey) throw new Error('SOLANA_PRIVATE_KEY is required');
   if (!cfg.solanaProgramId) throw new Error('SOLANA_PROGRAM_ID is required');
-
-  // FHE addresses needed by your EVM-side init
   if (!cfg.fhevmAclAddress) throw new Error('FHEVM_ACL_ADDRESS is required');
   if (!cfg.fhevmKmsVerifierAddress) throw new Error('FHEVM_KMS_VERIFIER_ADDRESS is required');
-
-  // Arcium minimal (claim→reseal)
   if (!cfg.arciumMxeProgramId) throw new Error('ARCIUM_MXE_PROGRAM_ID is required');
   if (!cfg.arciumCompDefResealPda) throw new Error('ARCIUM_COMPDEF_RESEAL_PDA is required');
 
-  // NOTE: solanaRequestOwner is OPTIONAL now.
+  // PDAs fijos del cluster (para claim reseal)
+  if (!cfg.arciumClusterPda) throw new Error('ARCIUM_CLUSTER_PDA is required');
+  if (!cfg.arciumFeePool) throw new Error('ARCIUM_FEE_POOL is required');
+  if (!cfg.arciumClock) throw new Error('ARCIUM_CLOCK is required');
 
   return cfg;
 };

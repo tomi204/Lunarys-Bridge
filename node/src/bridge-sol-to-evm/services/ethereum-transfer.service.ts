@@ -22,13 +22,12 @@ export class EthereumTransferService {
   private readonly wallet: ethers.Wallet;
 
   constructor(private readonly config: ConfigService<NodeConfig, true>) {
-  const url = this.config.getOrThrow<string>('ethereumRpcUrl');
-  const pk  = this.config.getOrThrow<string>('ethereumPrivateKey');
-  const chainId = Number(this.config.getOrThrow<number>('fhevmChainId'));
-
-  this.provider = new ethers.JsonRpcProvider(url, chainId);
-  this.wallet   = new ethers.Wallet(pk, this.provider);
-}
+    const url = this.config.getOrThrow<string>('ethereumRpcUrl');
+    const pk  = this.config.getOrThrow<string>('ethereumPrivateKey');
+    const chainId = Number(this.config.getOrThrow<number>('fhevmChainId'));
+    this.provider = new ethers.JsonRpcProvider(url, chainId);
+    this.wallet   = new ethers.Wallet(pk, this.provider);
+  }
 
   isNative(token: string) {
     const t = token.toLowerCase();

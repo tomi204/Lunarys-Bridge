@@ -9,7 +9,6 @@ export interface SolBridgeInitiated {
   payer: string;
   mint: string;
   amountAfterFee: bigint;
-  // si querés, podés incluir amount_commitment / recipient_hash que ya emitis
 }
 
 @Injectable()
@@ -48,20 +47,37 @@ export class SolanaMonitorService implements OnModuleInit, OnApplicationShutdown
   }
 
   private tryParseBridgeInitiated(logs: string[]): SolBridgeInitiated | null {
-    // Estrategia B (fallback): buscar línea "Program log: BridgeInitiated: {...}"
-    const line = logs.find(l => l.includes('BridgeInitiated:'));
-    if (!line) return null;
-    try {
-      const jsonStr = line.split('BridgeInitiated:')[1].trim();
-      const data = JSON.parse(jsonStr);
-      return {
-        requestId: BigInt(data.request_id ?? data.requestId),
-        payer: String(data.payer),
-        mint: String(data.token_mint ?? data.mint),
-        amountAfterFee: BigInt(data.amount_after_fee ?? data.amountAfterFee),
-      };
-    } catch {
-      return null;
+    // Formato 1 (Anchor >=0.29): 'Program log: Event: BridgeInitiated { "request_id":..., ... }'
+    const eLine = logs.find(l => l.includes('Event: BridgeInitiated'));
+    if (eLine) {
+      try {
+        const jsonPart = eLine.split('Event: BridgeInitiated')[1].trim();
+        const jsonStr = jsonPart.startsWith('{') ? jsonPart : jsonPart.slice(jsonPart.indexOf('{'));
+        const data = JSON.parse(jsonStr);
+        return {
+          requestId: BigInt(data.request_id ?? data.requestId),
+          payer: String(data.sender ?? data.payer),
+          mint: String(data.token ?? data.mint),
+          amountAfterFee: BigInt(data.amount_after_fee ?? data.amountAfterFee),
+        };
+      } catch {}
     }
+
+    // Formato 2 (fallback): 'Program log: BridgeInitiated: {...}'
+    const alt = logs.find(l => l.includes('BridgeInitiated:'));
+    if (alt) {
+      try {
+        const jsonStr = alt.split('BridgeInitiated:')[1].trim();
+        const data = JSON.parse(jsonStr);
+        return {
+          requestId: BigInt(data.request_id ?? data.requestId),
+          payer: String(data.sender ?? data.payer),
+          mint: String(data.token ?? data.mint),
+          amountAfterFee: BigInt(data.amount_after_fee ?? data.amountAfterFee),
+        };
+      } catch {}
+    }
+
+    return null;
   }
 }

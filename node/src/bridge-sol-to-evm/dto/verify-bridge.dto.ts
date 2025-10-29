@@ -1,4 +1,3 @@
-// src/bridge-sol-to-evm/dto/verify-bridge-sol-to-evm.dto.ts
 import { IsNotEmpty, IsString } from 'class-validator';
 
 export class VerifyBridgeSolToEvmDto {

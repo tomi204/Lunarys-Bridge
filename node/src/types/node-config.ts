@@ -1,20 +1,21 @@
-export type NodeConfig = {
+// Asegurate que este sea el NodeConfig real que usa tu app
+export interface NodeConfig {
   // Ethereum
   ethereumRpcUrl: string;
-  ethereumPrivateKey: string;
+  ethereumPrivateKey: string; // 0x-prefixed
   fhevmChainId: number;
   newRelayerAddress?: string;
 
   // Solana
   solanaRpcUrl: string;
-  solanaPrivateKey: string;
+  solanaPrivateKey: string; // base58 o JSON array
   solanaProgramId: string;
   solanaMinSolverBondLamports?: number;
-  solanaRequestOwner?: string; // <- optional
+  solanaSignSeed?: string; // <-- ADD
 
   // Node
-  bondAmount?: string;
-  pollInterval?: number;
+  bondAmount: string;
+  pollInterval: number;
 
   // FHE (EVM side)
   fhevmGatewayUrl: string;
@@ -24,7 +25,7 @@ export type NodeConfig = {
   // External relayer
   relayerApiUrl?: string;
 
-  // Tests/fallbacks
+  // Tests (opcionales)
   testSolanaDestination?: string;
   testEvmDestination?: string;
 
@@ -34,13 +35,20 @@ export type NodeConfig = {
   tokenDecimalsEvm: number;
   tokenDecimalsSol: number;
 
-  // Arcium
-  arciumProgramId?: string;
+  // Arcium (program + compdefs + fixed PDAs)
+  arciumProgramId: string;
   arciumMxeProgramId: string;
   arciumCompDefResealPda: string;
-  arciumCompDefPlanPayoutPda?: string;
-  arciumMxeX25519PublicKey?: string;
+  arciumCompDefPlanPayoutPda: string;
 
-  // Solver
-  solverX25519Secret?: string;
-};
+  // PDAs fijos de cluster (FRONT->NODE)
+  arciumClusterPda: string; // <-- ADD
+  arciumFeePool: string;    // <-- ADD
+  arciumClock: string;      // <-- ADD
+
+  // Reseal MXE pubkey (x25519)
+  arciumMxeX25519PublicKey: string;
+
+  // Solver key
+  solverX25519Secret: string;
+}
