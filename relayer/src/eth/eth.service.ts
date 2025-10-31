@@ -26,9 +26,14 @@ export class EthService {
   private contract: ethers.Contract;
 
   constructor(cfg: ConfigService) {
-    const rpc = cfg.get<string>('ETHEREUM_RPC_URL')!;
-    const pk  = cfg.get<string>('RELAYER_PRIVATE_KEY')!;
-    const addr = cfg.get<string>('NEW_RELAYER_ADDRESS')!;
+    const rpc  = cfg.get<string>('ETHEREUM_RPC_URL') ?? process.env.ETHEREUM_RPC_URL;
+    const pk  = cfg.get<string>('RELAYER_PRIVATE_KEY') ?? process.env.RELAYER_PRIVATE_KEY;
+    const addr = cfg.get<string>('NEW_RELAYER_ADDRESS') ?? process.env.NEW_RELAYER_ADDRESS;
+
+    if (!rpc) throw new Error('ETHEREUM_RPC_URL missing');
+    if (!pk) throw new Error('RELAYER_PRIVATE_KEY missing');
+    if (!addr) throw new Error('NEW_RELAYER_ADDRESS missing');
+
 
     this.provider = new ethers.JsonRpcProvider(rpc);
     this.wallet = new ethers.Wallet(pk, this.provider);

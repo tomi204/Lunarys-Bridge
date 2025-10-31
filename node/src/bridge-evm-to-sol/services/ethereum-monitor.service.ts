@@ -83,7 +83,7 @@ export class EthereumMonitorService implements OnModuleInit, OnApplicationShutdo
           encryptedSolanaDestination: encrypted,
         };
 
-        this.events.emit('bridge.initiated', req);
+        this.events.emit('eth.bridge.initiated', req);
       },
     );
   }
