@@ -7,6 +7,13 @@ import {
   Finality,
 } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
+import * as fs from 'fs';
+import * as anchor from '@coral-xyz/anchor';
+import type { Idl } from '@coral-xyz/anchor';
+import { SystemProgram } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import bridgeIdl from 'src/abi/bridge.json';
+
 
 export type VerifyTransferParams = {
   signature: string;   // tx signature
@@ -22,6 +29,24 @@ export type VerifyDepositParams = {
   mint?: string;
   programId?: string;
 };
+
+export type VerifyAndSettleOnSolanaParams = {
+  requestId: bigint | string | number;
+  evmTransferTxHash: `0x${string}`;   // 32 bytes hex
+  evidenceHash?: `0x${string}`;      // opcional, 32 bytes hex
+  accounts: {
+    payer: string;        // signer/fee payer
+    escrowOwner: string;  // PDA owner del vault
+    escrowToken: string;  // ATA del vault (SPL)
+    mint: string;         // SPL mint
+    mxeAccount: string;   // tus PDAs auxiliares
+    feePool: string;
+    clock: string;
+    tokenProgram?: string;   // override opcional
+    systemProgram?: string;  // override opcional
+  };
+};
+
 
 @Injectable()
 export class SolService {
@@ -173,5 +198,98 @@ export class SolService {
       throw new BadRequestException(`Vault SPL delta ${delta} < expected ${p.amount}`);
     }
     return { ok: true, tx };
+  }
+  // === NUEVO: helpers privados para verify_and_settle ===
+  private hex32ToBytes(hex: string): Uint8Array {
+    const h = hex.startsWith('0x') ? hex.slice(2) : hex;
+    if (h.length !== 64) {
+      throw new BadRequestException(`expected 32-byte hex, got len=${h.length}`);
+    }
+    const out = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) out[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+    return out;
+  }
+
+  private toBNu128(x: bigint | string | number): anchor.BN {
+    const b = typeof x === 'bigint' ? x : BigInt(x);
+    if (b < 0n || b > (1n << 128n) - 1n) {
+      throw new BadRequestException('requestId out of u128 range');
+    }
+    return new anchor.BN(b.toString());
+  }
+
+  private getAnchorCtx() {
+    const programIdStr = process.env.SOLANA_PROGRAM_ID;
+    if (!programIdStr) throw new Error('SOLANA_PROGRAM_ID missing');
+
+    const keypairPath =
+      process.env.SOLANA_RELAYER_KEYPAIR_PATH ??
+      `${process.env.HOME}/.config/solana/id.json`;
+
+    const raw = fs.readFileSync(keypairPath, 'utf8');
+    const kp = anchor.web3.Keypair.fromSecretKey(Uint8Array.from(JSON.parse(raw)));
+    const wallet = new anchor.Wallet(kp);
+    const provider = new anchor.AnchorProvider(this.conn, wallet, { commitment: 'confirmed' });
+
+    const programId = new PublicKey(programIdStr);
+    const idl = bridgeIdl as Idl;
+    const program = new anchor.Program(idl, provider);
+
+    // sanity: la instrucción puede estar camel o snake según Anchor
+    const hasCamel = typeof (program.methods as any)['verifyAndSettle'] === 'function';
+    const hasSnake = typeof (program.methods as any)['verify_and_settle'] === 'function';
+    if (!hasCamel && !hasSnake) {
+      throw new Error('verify_and_settle not found in IDL/program.methods');
+    }
+    return { provider, program };
+  }
+
+  // === NUEVO: llama a verify_and_settle del programa Anchor ===
+  async verifyAndSettleOnSolana(p: VerifyAndSettleOnSolanaParams) {
+    const { provider, program } = this.getAnchorCtx();
+
+    const requestIdBn = this.toBNu128(p.requestId);
+    const evmTxHash = this.hex32ToBytes(p.evmTransferTxHash);
+    const evidence = p.evidenceHash ? this.hex32ToBytes(p.evidenceHash) : new Uint8Array(32);
+
+    const accounts = {
+      payer: new PublicKey(p.accounts.payer),
+      escrowOwner: new PublicKey(p.accounts.escrowOwner),
+      escrowToken: new PublicKey(p.accounts.escrowToken),
+      mint: new PublicKey(p.accounts.mint),
+      mxeAccount: new PublicKey(p.accounts.mxeAccount),
+      feePool: new PublicKey(p.accounts.feePool),
+      clock: new PublicKey(p.accounts.clock),
+      tokenProgram: new PublicKey(p.accounts.tokenProgram ?? TOKEN_PROGRAM_ID.toBase58()),
+      systemProgram: new PublicKey(p.accounts.systemProgram ?? SystemProgram.programId.toBase58()),
+    };
+
+    this.logger.log(
+      `[verifyAndSettleOnSolana] req=${requestIdBn.toString()} evmTx=${p.evmTransferTxHash} evidence=${p.evidenceHash ?? '0x00..'}`
+    );
+
+    // preferimos camelCase; si no está, usamos snake_case
+    const m =
+      (program.methods as any)['verifyAndSettle'] ??
+      (program.methods as any)['verify_and_settle'];
+
+    try {
+      const sig: string = await m(requestIdBn, Array.from(evmTxHash), Array.from(evidence))
+        .accounts(accounts)
+        .rpc();
+
+      this.logger.log(`[verifyAndSettleOnSolana] submitted: ${sig}`);
+
+      const conf = await provider.connection.confirmTransaction(sig, 'confirmed');
+      if (conf.value.err) {
+        this.logger.warn(`[verifyAndSettleOnSolana] tx err: ${JSON.stringify(conf.value.err)}`);
+        throw new BadRequestException(`verify_and_settle failed: ${JSON.stringify(conf.value.err)}`);
+      }
+
+      return { ok: true, signature: sig };
+    } catch (e: any) {
+      this.logger.error(`[verifyAndSettleOnSolana] error: ${e?.message ?? e}`);
+      throw new BadRequestException(e?.message ?? String(e));
+    }
   }
 }

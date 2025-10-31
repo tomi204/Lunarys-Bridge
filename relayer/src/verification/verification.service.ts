@@ -11,6 +11,8 @@ import { EvmToSolVerificationDto } from './dto/evm-to-sol.dto';
 import { SolToEvmVerificationDto } from './dto/sol-to-evm.dto';
 import { EvmToSolRepository } from 'src/common/repositories/evm-to-sol.repository';
 import { SolToEvmRepository } from 'src/common/repositories/sol-to-evm.repository';
+import { PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
 
 @Injectable()
 export class VerificationService {
@@ -182,7 +184,7 @@ export class VerificationService {
       throw new BadRequestException('Invalid EVM token address');
     }
 
-    // Verify deposit on Solana
+    // 1) Verificar el depósito en Solana (lock en vault)
     await this.sol.verifyDeposit({
       signature: dto.solanaDepositSignature,
       vault: dto.solanaVault,
@@ -190,10 +192,10 @@ export class VerificationService {
       mint: dto.solanaMint,
     });
 
-    // Mark VERIFIED
+    // 2) Marcar VERIFIED off-chain
     await this.s2eRepo.markVerified(dto.requestId);
 
-    // Decimals SOL -> EVM
+    // 3) Convertir unidades SOL -> EVM según mapping
     const mapping = findTokenInfo(dto.evmToken) ?? {
       name: 'Unknown',
       evm: { address: dto.evmToken as `0x${string}`, decimals: 18 },
@@ -201,7 +203,7 @@ export class VerificationService {
     };
     const { evmAmount } = adjustToEvmDecimals(BigInt(dto.amount), mapping);
 
-    // EVM-side prechecks
+    // 4) Prechecks lado EVM
     const contractBal = await this.eth.getContractTokenBalance(dto.evmToken as `0x${string}`);
     if (contractBal < evmAmount) {
       const msg = `Insufficient bridge balance on EVM (${contractBal} < ${evmAmount})`;
@@ -213,13 +215,79 @@ export class VerificationService {
       throw new BadRequestException('Amount must be greater than 0');
     }
 
-    // Deliver on EVM
+    // 5) Entregar en EVM y verificar por logs Transfer antes de cerrar en Solana
     try {
       const receipt = await this.eth.deliverTokens(
         dto.evmRecipient as `0x${string}`,
         dto.evmToken as `0x${string}`,
         evmAmount,
       );
+
+      // 5.a) Verificar entrega EVM (logs Transfer(to, amount) del token)
+      try {
+        await this.eth.verifyEvmDelivery({
+          txHash: receipt?.transactionHash as `0x${string}`,
+          token: dto.evmToken as `0x${string}`,
+          to: dto.evmRecipient as `0x${string}`,
+          amount: evmAmount,
+          minConfirmations: Number(process.env.ETH_MIN_CONFIRMATIONS ?? 1),
+        });
+        this.logger.log(
+          `[SOL->EVM] EVM delivery verified: req=${dto.requestId} tx=${receipt?.transactionHash}`
+        );
+      } catch (e: any) {
+        const msg = `[SOL->EVM] EVM delivery verification failed: ${e?.message ?? e}`;
+        this.logger.warn(msg);
+        await this.s2eRepo.markFailed(dto.requestId, msg);
+        throw new BadRequestException(msg);
+      }
+
+      // 6) Cerrar del lado Solana (verify_and_settle) SOLO si la entrega EVM fue verificada
+      try {
+        const evmTransferTxHash = receipt?.transactionHash as `0x${string}`;
+
+        // Derivar ATA del vault si hay SPL; si es SOL nativo, usar vault como fallback
+        let escrowTokenB58 = dto.solanaVault;
+        const mintB58 = dto.solanaMint ?? mapping.sol.mint ?? '';
+        if (mintB58) {
+          const ata = await getAssociatedTokenAddress(
+            new PublicKey(mintB58),
+            new PublicKey(dto.solanaVault),
+            true, // owner off-curve (PDA)
+          );
+          escrowTokenB58 = ata.toBase58();
+        }
+
+        const payer      = process.env.SOLANA_RELAYER_PUBKEY || dto.solanaVault;
+        const mxeAccount = process.env.SOLANA_MXE_PDA!;
+        const feePool    = process.env.SOLANA_FEE_POOL!;
+        const clock      = process.env.SOLANA_CLOCK!;
+
+        const settleRes = await this.sol.verifyAndSettleOnSolana({
+          requestId: dto.requestId,
+          evmTransferTxHash,
+          accounts: {
+            payer,
+            escrowOwner: dto.solanaVault,
+            escrowToken: escrowTokenB58,
+            mint: mintB58 || '11111111111111111111111111111111',
+            mxeAccount,
+            feePool,
+            clock,
+          },
+        });
+
+        this.logger.log(
+          `[SOL->EVM] Solana verify_and_settle ok: req=${dto.requestId} sig=${settleRes.signature}`
+        );
+      } catch (e: any) {
+        const msg = `[SOL->EVM] verify_and_settle on Solana failed: ${e?.message ?? e}`;
+        this.logger.warn(msg);
+        await this.s2eRepo.markFailed(dto.requestId, msg);
+        throw new BadRequestException(msg);
+      }
+
+      // 7) Persistir SETTLED con tx de EVM
       await this.s2eRepo.markSettled(dto.requestId, receipt?.transactionHash, {
         amountEvm: evmAmount.toString(),
       });
@@ -229,6 +297,8 @@ export class VerificationService {
       throw e;
     }
   }
+
+
 
   async getEvmToSolStatus(id: string) {
     const rec = await this.e2sRepo.getByRequest(id);

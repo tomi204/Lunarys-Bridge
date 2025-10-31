@@ -102,4 +102,69 @@ export class EthService {
       return 0n;
     }
   }
+  async verifyEvmDelivery(params: {
+  txHash: string;
+  token: `0x${string}`;
+  to: `0x${string}`;
+  amount: bigint;
+  minConfirmations?: number; // default 1
+}): Promise<void> {
+  const ZERO_ETH_SENTINEL = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'; // tu sentinel para "native"
+  const ERC20_TRANSFER_TOPIC = (ethers as any).id
+  ? (ethers as any).id('Transfer(address,address,uint256)') // ethers v6
+  : '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+  const { txHash, token, to, amount } = params;
+  const minConf = params.minConfirmations ?? 1;
+
+  // Si fuera native (sentinel), por ahora solo exigimos receipt OK y confirmaciones.
+  if (token.toLowerCase() === ZERO_ETH_SENTINEL.toLowerCase()) {
+    const rcpt = await this.provider.waitForTransaction(txHash, minConf);
+    if (!rcpt) throw new Error(`No receipt for tx ${txHash}`);
+    if (rcpt.status !== 1) throw new Error(`Native transfer reverted (status=${rcpt.status})`);
+    return;
+  }
+
+  // ERC20: esperamos receipt con confirmaciones y chequeamos logs Transfer
+  const rcpt = await this.provider.waitForTransaction(txHash, minConf);
+  if (!rcpt) throw new Error(`No receipt for tx ${txHash}`);
+  if (rcpt.status !== 1) throw new Error(`Tx reverted (status=${rcpt.status})`);
+
+  // filtrar logs del token + tópico Transfer
+  const logs = (rcpt.logs ?? []).filter(
+    (l: any) =>
+      (l.address?.toLowerCase?.() === token.toLowerCase()) &&
+      (l.topics?.[0] === ERC20_TRANSFER_TOPIC),
+  );
+
+  if (!logs.length) {
+    throw new Error(`No ERC20 Transfer logs for token ${token} in tx ${txHash}`);
+  }
+
+  // decodificar y buscar Transfer(..., to, amount)
+  // ethers v6: Interface minimal para Transfer
+  const iface = new ethers.Interface([
+    'event Transfer(address indexed from, address indexed to, uint256 value)',
+  ]);
+
+  const ok = logs.some((l: any) => {
+    try {
+      const decoded = iface.decodeEventLog('Transfer', l.data, l.topics);
+      const toMatch = String(decoded.to).toLowerCase() === to.toLowerCase();
+      // decoded.value en v6 suele venir como bigint
+      const val = BigInt(decoded.value);
+      const amtMatch = val === amount;
+      return toMatch && amtMatch;
+    } catch {
+      return false;
+    }
+  });
+
+  if (!ok) {
+    throw new Error(
+      `ERC20 Transfer(to=${to}, amt=${amount}) not found in tx ${txHash}`,
+    );
+  }
+}
+
 }
